@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class StoreController
 {
@@ -44,7 +45,7 @@ class StoreController
     public function products(Request $request, $storeId)
     {
         //$storeId = $request->store_id;
-        $customer = $request->customer;
+        $customer = Auth::user();
         // Optionnel : validation de l'entrée
         if (!$storeId) {
             return Helpers::error('store_id est requis', 400);
@@ -69,8 +70,9 @@ class StoreController
 
     public function getDeatailStore(Request $request, $storeId)
     {
+        logger($storeId);
         //$storeId = $request->store_id;
-        $customer = $request->customer;
+        $customer = Auth::user();
         // Optionnel : validation de l'entrée
         if (!$storeId) {
             return Helpers::error('store_id est requis', 400);
@@ -82,7 +84,7 @@ class StoreController
     public function search(Request $request)
     {
         //$storeId = $request->store_id;
-        $customer = $request->customer;
+        $customer = Auth::user();
         $search = $request->get('search');
         if (!$search) {
             return Helpers::error('store_id est requis', 400);

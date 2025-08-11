@@ -52,4 +52,8 @@ class EnsureTokenValid
 
         return $next($request);
     }
+    protected $except = [
+        'broadcasting/auth'
+    ];
+
 }

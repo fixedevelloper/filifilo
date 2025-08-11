@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Order;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -68,20 +69,24 @@ return new class extends Migration
             $table->decimal('total')->default(0.0);
             $table->integer('quantity')->default(0);
             $table->decimal('total_ttc')->default(0.0);
-            $table->enum('status',['PREPARATION','EN_LIVRAISON','LIVREE','ANNULLEE']);
+            $table->enum('status',[Order::EN_ATTENTE,Order::PREPARATION,Order::EN_LIVRAISON,Order::EN_COURS_LIVRAISON,Order::LIVREE,Order::ANNULLEE])->default(Order::EN_ATTENTE);
+            $table->string('shipping_address')->nullable();
+            $table->string('shipping_latitude')->nullable();
+            $table->string('shipping_longitude')->nullable();
             $table->foreignId('store_id')->nullable()->constrained("stores",'id')->nullOnDelete();
             $table->foreignId('customer_id')->nullable()->constrained("users",'id')->nullOnDelete();
+            $table->foreignId('transporter_id')->nullable()->constrained("users",'id')->nullOnDelete();
             $table->timestamps();
         });
         Schema::create('line_items', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->decimal('price')->default(0.0);
-        $table->integer('quantity')->default(0);
-        $table->decimal('total')->default(0.0);
-        $table->foreignId('order_id')->nullable()->constrained("orders",'id')->nullOnDelete();
-        $table->timestamps();
-    });
+            $table->id();
+            $table->string('name');
+            $table->decimal('price')->default(0.0);
+            $table->integer('quantity')->default(0);
+            $table->decimal('total')->default(0.0);
+            $table->foreignId('order_id')->nullable()->constrained("orders", 'id')->nullOnDelete();
+            $table->timestamps();
+        });
         Schema::create('vendor_revenues', function (Blueprint $table) {
             $table->id();
             $table->foreignId('vendor_id')->nullable()->constrained('users','id');
@@ -118,6 +123,28 @@ return new class extends Migration
             $table->longText('content');
             $table->timestamps();
         });
+        Schema::create('transporter_positions', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('order_id');
+            $table->decimal('lat', 10, 7);
+            $table->decimal('lng', 10, 7);
+            $table->timestamps();
+            $table->foreign('order_id')->references('id')->on('orders')->onDelete('cascade');
+        });
+
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->id();
+            $table->string('user_id');
+            $table->string('username');
+            $table->string('profile_image')->nullable();
+            $table->string('action_text');
+            $table->string('time');
+            $table->boolean('isRead')->default(false);
+            $table->string('thumbnail_url')->nullable();
+            $table->timestamps();
+        });
+
+
     }
 
     /**

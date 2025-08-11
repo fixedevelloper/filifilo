@@ -4,14 +4,18 @@
 namespace App\Http\Controllers\API;
 
 
+use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\LineItem;
+use App\Models\Notification;
 use App\Models\Order;
+use App\Models\OrderShipping;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -20,7 +24,7 @@ class OrderController extends Controller
 {
     public function createOrder(Request $request)
     {
-        $customer = $request->customer;
+        $customer = Auth::user();
         $validator=   Validator::make($request->all(),[
             'type' => 'required|string|in:SHOP,STORE', // adapte selon tes types
             'store_id' => 'required|exists:stores,id',
@@ -62,7 +66,10 @@ class OrderController extends Controller
                 'status' => Helper::STATUSPREPARATION,
                 'store_id' => $request->store_id,
                 'customer_id' => $customer->id,
-                'reference' => 'FF_' . Helper::generateTransactionNumber()
+                'shipping_address' =>$request->address,
+                'shipping_longitude' =>$request->longitude,
+                'shipping_latitude' =>$request->latitude,
+                'reference' => 'FF_' . Helper::generatenumber()
             ]);
 
             foreach ($items as $item) {
@@ -75,13 +82,22 @@ class OrderController extends Controller
                     'order_id' => $order->id
                 ]);
             }
-
-            DB::commit();
-
-            Log::info('Commande créée avec succès', [
-                'order_id' => $order->id,
-                'reference' => $order->reference
+            $notification=Notification::create([
+                "username" => $order->store->vendor->first_name,
+                "profile_image" => $order->store->vendor->first_name,
+                "action_text" => "Placed a new order",
+                "time" => $order->time_ago,
+                "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
             ]);
+            broadcast(new NewNotification([
+                'user_id' => $order->id,
+                "username" => $order->store->vendor->first_name,
+                "profile_image" => $order->store->vendor->first_name,
+                "action_text" => "Placed a new order",
+                "time" => $order->time_ago,
+                "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
+            ]));
+            DB::commit();
 
             return Helpers::success([
                 'reference' => $order->reference,
@@ -101,7 +117,7 @@ class OrderController extends Controller
     public function orders(Request $request)
     {
         //$storeId = $request->store_id;
-        $customer = $request->customer;
+        $customer = Auth::user();
 
         $orders = Order::where('customer_id', $customer->id)->orderByDesc("created_at")->get()->map(function ($order) {
             $lines=LineItem::where('order_id',$order->id)->get()->map(function ($line){
@@ -129,12 +145,28 @@ class OrderController extends Controller
     }
     public function orderByID(Request $request,$orderId)
     {
-        $customer = $request->customer;
+        $customer = Auth::user();
+        $order = Order::with(['store', 'lineItems','customer'])->find($orderId);
+
+        if (!$order) {
+            return Helpers::error('Commande non trouvée');
+        }
+
+        return Helpers::success(new OrderResource($order), 'Commande récupérée avec succès');
+
+
+    }
+    public function addTransporterToOrderByID(Request $request,$orderId,$transporter_id)
+    {
+        $customer = Auth::user();
         $order = Order::with(['store', 'lineItems'])->find($orderId);
 
         if (!$order) {
             return Helpers::error('Commande non trouvée');
         }
+        $order->update([
+           'transporter_id'=>$transporter_id
+        ]);
 
         return Helpers::success(new OrderResource($order), 'Commande récupérée avec succès');
 
