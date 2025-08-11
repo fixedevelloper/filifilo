@@ -5,11 +5,13 @@ namespace App\Http\Controllers\API;
 
 
 use App\Helpers\api\Helpers;
+use App\Models\Store;
 use App\Models\User;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AuthApiController
@@ -54,6 +56,8 @@ class AuthApiController
             return response()->json(['error' => 'invalid_credentials'], 401);
         }
         return Helpers::success([
+            'name'=>$customer->first_name.' '.$customer->last_name,
+            'phone'=>$customer->phone,
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => auth('api')->factory()->getTTL() * 60
@@ -66,6 +70,85 @@ class AuthApiController
             'token_type' => 'bearer'
         ]);
     }
+    public function register(Request $request)
+    {
+        // ✅ Validation centralisée
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'required|string|max:20|unique:users,phone',
+            'password' => 'required|string|min:6',
+            'user_type' => 'required|in:'.User::TYPE_VENDOR.','.User::TYPE_CUSTOMER,
+            'store_name' => 'required_if:user_type,'.User::TYPE_VENDOR,
+            'store_type' => 'required_if:user_type,'.User::TYPE_VENDOR,
+            'store_address' => 'nullable|string',
+            'store_phone' => 'nullable|string|max:20',
+            'store_latitude' => 'nullable|numeric',
+            'store_longitude' => 'nullable|numeric',
+            'store_image' => 'nullable|string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // ✅ Création de l’utilisateur
+            $customer = User::create([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'],
+                'user_type' => $validated['user_type'],
+                'photo' => null,
+                'role' => $validated['user_type'] === User::TYPE_VENDOR ? 'VENDOR' : 'CUSTOMER',
+                'activate' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            // ✅ Création du store si vendeur
+            if ($validated['user_type'] === User::TYPE_VENDOR) {
+                $imagePath = null;
+                if ($request->hasFile('store_image')) {
+                    // Sauvegarde dans storage/app/public/stores
+                    $imagePath = $request->file('store_image')->store('stores', 'public');
+                }
+                Store::create([
+                    'latitude' => $validated['store_latitude'] ?? null,
+                    'longitude' => $validated['store_longitude'] ?? null,
+                    'name' => $validated['store_name'],
+                    'type' => strtolower($validated['store_type']) === 'restaurant' ? 'RESTAURANT' : 'SHOP',
+                    'address' => $validated['store_address'] ?? null,
+                    'phone' => $validated['store_phone'] ?? null,
+                    'vendor_id' => $customer->id,
+                    'imageUrl' => $imagePath ? asset('storage/' . $imagePath) : null
+                ]);
+            }
+
+            DB::commit();
+
+            // ✅ Connexion auto après inscription
+            $token = auth('api')->attempt([
+                'phone' => $validated['phone'],
+                'password' => $validated['password']
+            ]);
+
+            if (! $token) {
+                return Helpers::error('Impossible de générer le token', 401);
+            }
+
+            return Helpers::success([
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => auth('api')->factory()->getTTL() * 60
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return Helpers::error('Erreur lors de l’inscription : '.$e->getMessage(), 500);
+        }
+    }
+
     public function login2(Request $request)
     {
         $privateKey = file_get_contents('private.pem');
@@ -117,7 +200,7 @@ class AuthApiController
             'expires_in' => 3600
         ]);
     }
-    public function register(Request $request)
+    public function register2(Request $request)
     {
         $privateKey = file_get_contents('private.pem');
         $request->validate([
@@ -128,15 +211,13 @@ class AuthApiController
             'password' => 'required|string',
             'user_type' => 'required',
         ]);
-
-        // Vérifie si un customer correspond à ces credentials
-
-
         $customer = User::where('phone', $request->phone)
             ->first();
         if ($customer) {
             return Helpers::error('Le telephone existe deja');
         }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
         $customer = User::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
@@ -149,16 +230,20 @@ class AuthApiController
             'email_verified_at' => now(),
             'password' => Hash::make($request->password),
         ]);
+        if ($request->user_type==User::TYPE_VENDOR){
+            $store=Store::create([
+                'latitude' => $request->store_latitude,
+                'longitude' => $request->store_longitude,
+                'name' => $request->store_name,
+                'type' => $request->store_type=='restaurant'?'RESTAURANT':'SHOP',
+                'address' => $request->store_address,
+                'phone' => $request->store_phone,
+                'vendor_id' => $customer->id,
+                'imageUrl'=>$request->imageUrl
+            ]);
+        }
+        \Illuminate\Support\Facades\DB::commit();
 
-        // Génère un JWT signé avec SA clé privée
-/*        $payload = [
-            'iss' => 'wtc_api',
-            'sub' => $customer->id,
-            'iat' => time(),
-            'exp' => time() + 3600
-        ];
-
-        $jwt = JWT::encode($payload, $privateKey, 'RS256');*/
         $credentials = $request->only('phone', 'password');
 
         if (! $token = auth('api')->attempt($credentials)) {
@@ -174,7 +259,7 @@ class AuthApiController
     public function profile(Request $request)
     {
 
-        $customer = $request->customer;
+        $customer = Auth::user();
 
         if (!$customer) {
             return Helpers::error('$customer est requis', 400);
@@ -229,7 +314,7 @@ class AuthApiController
             'new_password' => 'required|string',
             'password' => 'required|string',
         ]);
-        $customer = $request->customer;
+        $customer = Auth::user();
 
         if (!$customer) {
             return Helpers::error('$customer est requis', 400);

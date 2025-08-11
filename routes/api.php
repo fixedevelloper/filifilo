@@ -31,6 +31,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/orders', [OrderController::class, 'createOrder']);
     Route::get('/orders', [OrderController::class, 'orders']);
     Route::get('/orders/transporters', [TransporterController::class, 'orders']);
+    Route::get('/orders/transporters/my', [TransporterController::class, 'myOrders']);
+    Route::put('/drivers/order/{id}/status', [TransporterController::class, 'updateStatus']);
     Route::get('/orders/{id}', [OrderController::class, 'orderByID']);
     Route::get('/profile', [AuthApiController::class, 'profile']);
     Route::post('/profile', [AuthApiController::class, 'updateProfile']);

@@ -14,8 +14,10 @@ use App\Models\Order;
 use App\Models\Store;
 use App\Models\TransporterPosition;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class TransporterController extends Controller
@@ -145,46 +147,64 @@ class TransporterController extends Controller
 
         return response()->json(null, 404);
     }
-    public function updateStatus(Request $request)
+    public function updateStatus(Request $request,$id)
     {
-        $manager = Auth::user();
+        $driver = Auth::user();
 
-        $validator=   Validator::make($request->all(),[
-            'status' => 'required|string',
-            'order_id' => 'required|exists:orders,id',
+        // 1. Validation des données
+        $validator = Validator::make($request->all(), [
+            'status'   => 'required|string',
         ]);
 
         if ($validator->fails()) {
-            $err = null;
-            foreach ($validator->errors()->all() as $error) {
-                $err = $error;
-            }
+            $err = $validator->errors()->first();
             return Helpers::error($err);
         }
-        $order=Order::query()->find($request->order_id);
-        $order->update([
-            'status'=>$request->status
-        ]);
-        // Création en BDD
-        $notification = Notification::create([
-            'user_id'       => $order->customer->id,
-            'username'      => $order->customer->first_name,
-            'profile_image' => $order->customer->profile_image, // ✅ Image du client
-            'action_text'   => "Votre commande est en cours de livraison",
-            'time'          => now()->diffForHumans(), // ou via accessoire
-            'thumbnail_url' => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-        ]);
 
-        // Envoi en temps réel
-        broadcast(new NewNotification([
-            'user_id'       => $order->customer->id,
-            'username'      => $order->customer->first_name,
-            'profile_image' => $order->customer->profile_image, // ✅ Image du client
-            'action_text'   => "Votre commande est en cours de livraison",
-            'time'          => now()->diffForHumans(), // ou via accessoire
-            'thumbnail_url' => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-        ]));
+        try {
+            DB::transaction(function () use ($id, $request, $driver) {
 
-        return Helpers::success($order, 'Produit créée avec succès');
+                // 2. Récupération sécurisée avec verrouillage
+                $order = Order::where('id', $id)
+                    ->whereNull('transporter_id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (is_null($order)) {
+                    throw new \Exception('Commande déjà attribuée');
+                }
+
+                // 3. Mise à jour de la commande
+                $order->update([
+                    'status'         => $request->status,
+                    'transporter_id' => $driver->id
+                ]);
+
+                // 4. Création de la notification
+                $notification = Notification::create([
+                    'user_id'       => $order->customer->id,
+                    'username'      => $order->customer->first_name,
+                    'profile_image' => $order->customer->profile_image,
+                    'action_text'   => "Votre commande est en cours de livraison",
+                    'time'          => Carbon::now()->diffForHumans(),
+                    'thumbnail_url' => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
+                ]);
+
+                // 5. Envoi temps réel
+                broadcast(new NewNotification([
+                    'user_id'       => $order->customer->id,
+                    'username'      => $order->customer->first_name,
+                    'profile_image' => $order->customer->profile_image,
+                    'action_text'   => "Votre commande est en cours de livraison",
+                    'time'          => $notification->time ?? Carbon::now()->diffForHumans(),
+                    'thumbnail_url' => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
+                ]));
+            });
+
+            return Helpers::success(null, 'Commande attribuée avec succès');
+
+        } catch (\Exception $e) {
+            return Helpers::error($e->getMessage());
+        }
     }
 }
