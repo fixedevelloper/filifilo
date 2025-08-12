@@ -90,6 +90,7 @@ class OrderController extends Controller
                 "time" => $order->time_ago,
                 "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
             ]);
+            DB::commit();
             broadcast(new NewNotification([
                 'user_id' => $order->id,
                 "username" => $order->store->vendor->first_name,
@@ -98,7 +99,7 @@ class OrderController extends Controller
                 "time" => $order->time_ago,
                 "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
             ]));
-            DB::commit();
+
 
             return Helpers::success([
                 'reference' => $order->reference,
