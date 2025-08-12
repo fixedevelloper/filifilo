@@ -86,14 +86,14 @@ class OrderController extends Controller
 
             DB::commit();
             logger($order->store->vendor_id);
-            $notification=Notification::create([
+/*            $notification=Notification::create([
                 'user_id' => $order->store->vendor_id,
                 "username" => $order->store->vendor->first_name,
                 "profile_image" => $order->store->vendor->first_name,
                 "action_text" => "Placed a new order",
                 "time" => $order->time_ago,
                 "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-            ]);
+            ]);*/
             broadcast(new NewNotification([
                 'user_id' => $order->id,
                 "username" => $order->store->vendor->first_name,
