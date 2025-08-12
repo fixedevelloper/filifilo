@@ -11,4 +11,8 @@ class Store extends Model
         'latitude', 'longitude', 'time_open', 'time_close',
         'note', 'is_close', 'vendor_id', 'city_id'
     ];
+    public function vendor()
+    {
+        return $this->belongsTo(User::class,'vendor_id','id');
+    }
 }

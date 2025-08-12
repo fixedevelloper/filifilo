@@ -25,6 +25,7 @@ class OrderController extends Controller
     public function createOrder(Request $request)
     {
         $customer = Auth::user();
+        logger($request->all());
         $validator=   Validator::make($request->all(),[
             'type' => 'required|string|in:SHOP,STORE', // adapte selon tes types
             'store_id' => 'required|exists:stores,id',
