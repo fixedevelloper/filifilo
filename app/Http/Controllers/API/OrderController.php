@@ -86,6 +86,7 @@ class OrderController extends Controller
 
             DB::commit();
             $notification=Notification::create([
+                'user_id' => $order->store->vendor->id,
                 "username" => $order->store->vendor->first_name,
                 "profile_image" => $order->store->vendor->first_name,
                 "action_text" => "Placed a new order",
