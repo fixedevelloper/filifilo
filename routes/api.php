@@ -26,6 +26,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/search', [StoreController::class, 'search']);
     Route::get('/stores', [StoreController::class, 'stores']);
     Route::get('/categories', [StoreController::class, 'categories']);
+    Route::get('/ingredients', [StoreController::class, 'categories']);
     Route::get('/products/{store_id}', [StoreController::class, 'products']);
     Route::get('/stores/{id}', [StoreController::class, 'getDeatailStore']);
     Route::post('/orders', [OrderController::class, 'createOrder']);

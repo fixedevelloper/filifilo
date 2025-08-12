@@ -114,7 +114,7 @@ class ManagerController extends Controller
             }
             return Helpers::error($err);
         }
-
+        $imagePath=null;
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('products', 'public');
         }
@@ -126,7 +126,7 @@ class ManagerController extends Controller
                 'name' => $request->name,
                 'price' => $request->price,
                 'store_id' => $store->id,
-                'category_id' => $customer->id,
+                'category_id' => $request->category_id,
                 'imageUrl'=>$imagePath
             ]);
 
@@ -137,11 +137,11 @@ class ManagerController extends Controller
         }
         catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de la création de la commande', [
+            Log::error('Erreur lors de la création du produit', [
                 'message' => $e->getMessage(),
                 'stack' => $e->getTraceAsString(),
             ]);
-            return Helpers::error('Une erreur est survenue lors de la création de la commande.');
+            return Helpers::error('Une erreur est survenue lors de la création ddu produit');
         }
     }
     public function updateStatus(Request $request)
