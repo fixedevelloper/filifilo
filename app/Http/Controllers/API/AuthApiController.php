@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class AuthApiController
 {
@@ -72,14 +73,14 @@ class AuthApiController
     }
     public function register(Request $request)
     {
-        // ✅ Validation centralisée
-        $validated = $request->validate([
+
+        $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
             'email' => 'nullable|email|max:255',
             'phone' => 'required|string|max:20|unique:users,phone',
             'password' => 'required|string|min:6',
-            'user_type' => 'required|in:'.User::TYPE_VENDOR.','.User::TYPE_CUSTOMER,
+            'user_type' => 'required|in:'.User::TYPE_VENDOR.','.User::TYPE_CUSTOMER.','.User::TYPE_SHIPPING,
             'store_name' => 'required_if:user_type,'.User::TYPE_VENDOR,
             'store_type' => 'required_if:user_type,'.User::TYPE_VENDOR,
             'store_address' => 'nullable|string',
@@ -89,37 +90,46 @@ class AuthApiController
             'store_image' => 'nullable|string'
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+// ✅ On récupère les données validées sous forme de tableau
+        $data = $validator->validated();
+
         DB::beginTransaction();
 
         try {
-            // ✅ Création de l’utilisateur
+            // Création de l’utilisateur
             $customer = User::create([
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'email' => $validated['email'] ?? null,
-                'phone' => $validated['phone'],
-                'user_type' => $validated['user_type'],
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'],
+                'user_type' => $data['user_type'],
                 'photo' => null,
-                'role' => $validated['user_type'] === User::TYPE_VENDOR ? 'VENDOR' : 'CUSTOMER',
+                'role' => $data['user_type'] === User::TYPE_VENDOR ? 'VENDOR' : 'CUSTOMER',
                 'activate' => true,
                 'email_verified_at' => now(),
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($data['password']),
             ]);
 
-            // ✅ Création du store si vendeur
-            if ($validated['user_type'] === User::TYPE_VENDOR) {
+            // Création du store si vendeur
+            if ($data['user_type'] === User::TYPE_VENDOR) {
                 $imagePath = null;
                 if ($request->hasFile('store_image')) {
-                    // Sauvegarde dans storage/app/public/stores
                     $imagePath = $request->file('store_image')->store('stores', 'public');
                 }
                 Store::create([
-                    'latitude' => $validated['store_latitude'] ?? null,
-                    'longitude' => $validated['store_longitude'] ?? null,
-                    'name' => $validated['store_name'],
-                    'type' => strtolower($validated['store_type']) === 'restaurant' ? 'RESTAURANT' : 'SHOP',
-                    'address' => $validated['store_address'] ?? null,
-                    'phone' => $validated['store_phone'] ?? null,
+                    'latitude' => $data['store_latitude'] ?? null,
+                    'longitude' => $data['store_longitude'] ?? null,
+                    'name' => $data['store_name'],
+                    'type' => strtolower($data['store_type']) === 'restaurant' ? 'RESTAURANT' : 'SHOP',
+                    'address' => $data['store_address'] ?? null,
+                    'phone' => $data['store_phone'] ?? null,
                     'vendor_id' => $customer->id,
                     'imageUrl' => $imagePath ? asset('storage/' . $imagePath) : null
                 ]);
@@ -127,13 +137,13 @@ class AuthApiController
 
             DB::commit();
 
-            // ✅ Connexion auto après inscription
+            // Connexion auto après inscription
             $token = auth('api')->attempt([
-                'phone' => $validated['phone'],
-                'password' => $validated['password']
+                'phone' => $data['phone'],
+                'password' => $data['password']
             ]);
 
-            if (! $token) {
+            if (!$token) {
                 return Helpers::error('Impossible de générer le token', 401);
             }
 
@@ -147,6 +157,7 @@ class AuthApiController
             DB::rollBack();
             return Helpers::error('Erreur lors de l’inscription : '.$e->getMessage(), 500);
         }
+
     }
 
     public function login2(Request $request)

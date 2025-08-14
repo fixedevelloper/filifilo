@@ -17,8 +17,8 @@ Route::post('/broadcasting/auth', function () {
 });
 
 Route::post('/broadcastin/auth', [AuthApiController::class, 'authenticateBroacast']);
-Route::post('/login', [AuthApiController::class, 'login'])->name('login');
-Route::post('/register', [AuthApiController::class, 'register']);
+Route::post('login', [AuthApiController::class, 'login'])->name('login');
+Route::post('register', [AuthApiController::class, 'register']);
 Route::get('/send-notif', [NotificationController::class, 'send']);
 Route::post('/driver/location', [TransporterController::class, 'updateTransporterPosition']);
 Route::middleware('auth:api')->group(function () {
@@ -41,6 +41,7 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('vendors/store', [ManagerController::class, 'getStore']);
     Route::get('vendors/products', [ManagerController::class, 'products']);
+    Route::get('vendors/products/{id}', [ManagerController::class, 'products']);
     Route::get('vendors/orders', [ManagerController::class, 'orders']);
     Route::post('vendors/products', [ManagerController::class, 'createProduct']);
     Route::post('vendors/orders/status', [ManagerController::class, 'updateStatus']);

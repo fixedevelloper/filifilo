@@ -89,6 +89,32 @@ class ManagerController extends Controller
 
         return Helpers::success($products, 'Produits récupérés avec succès');
     }
+    public function getProduct(Request $request,$id)
+    {
+        $customer = Auth::user();
+        $store=Store::query()->firstWhere(['vendor_id'=>$customer->id]);
+        if (is_null($store)){
+            return Helpers::error('Vous n etes pas vendeur');
+        }
+
+        $product = Product::with(['store', 'category'])->findOrFail($id);
+
+        $item = [
+            'id' => $product->id,
+            'name' => $product->name,
+            'details' => $product->description,
+            'price' => $product->price,
+            'image_url' => $product->imageUrl,
+            'category_id' => $product->category_id,
+            'store_id' => $product->store_id,
+            'store_name' => $product->store->name ?? null,
+            'category_name' => $product->category->name ?? null,
+            'created_at' => $product->created_at->toDateTimeString(),
+        ];
+
+
+        return Helpers::success($item, 'Produit récupérés avec succès');
+    }
     public function createProduct(Request $request)
     {
         $customer = Auth::user();
