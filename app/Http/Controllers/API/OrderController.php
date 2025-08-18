@@ -12,8 +12,8 @@ use App\Http\Resources\OrderResource;
 use App\Models\LineItem;
 use App\Models\Notification;
 use App\Models\Order;
-use App\Models\OrderShipping;
 use App\Models\Product;
+use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,7 @@ class OrderController extends Controller
         $customer = Auth::user();
         logger($request->all());
         $validator=   Validator::make($request->all(),[
-            'type' => 'required|string|in:SHOP,STORE', // adapte selon tes types
+            //'type' => 'required|string|in:SHOP,STORE',
             'store_id' => 'required|exists:stores,id',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string|max:255',
@@ -58,13 +58,13 @@ class OrderController extends Controller
             foreach ($items as $item) {
                 $total += $item['total'];
             }
-
+            $store=Store::find($request->store_id);
             $order = Order::create([
-                'type' => $request->type,
+                'type' => $store->type,
                 'quantity' => count($items),
                 'total_ttc' => $total,
                 'total' => $total,
-                'status' => Helper::STATUSPREPARATION,
+                'status' => Order::EN_ATTENTE,
                 'store_id' => $request->store_id,
                 'customer_id' => $customer->id,
                 'shipping_address' =>$request->address,
@@ -84,25 +84,25 @@ class OrderController extends Controller
                 ]);
             }
 
-            DB::commit();
+
             logger($order->store->vendor_id);
-/*            $notification=Notification::create([
+            $notification=Notification::create([
                 'user_id' => $order->store->vendor_id,
                 "username" => $order->store->vendor->first_name,
                 "profile_image" => $order->store->vendor->first_name,
                 "action_text" => "Placed a new order",
                 "time" => $order->time_ago,
                 "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-            ]);*/
-            broadcast(new NewNotification([
+            ]);
+   /*         broadcast(new NewNotification([
                 'user_id' => $order->id,
                 "username" => $order->store->vendor->first_name,
                 "profile_image" => $order->store->vendor->first_name,
                 "action_text" => "Placed a new order",
                 "time" => $order->time_ago,
                 "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-            ]));
-
+            ]));*/
+            DB::commit();
 
             return Helpers::success([
                 'reference' => $order->reference,

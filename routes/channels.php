@@ -16,11 +16,12 @@ Broadcast::channel('tracking.{orderId}', function ($user, $orderId) {
 
 Broadcast::channel('notifications.{userId}', function ($user, $userId) {
     logger('****************' . $userId);
-    return true; // pour tester sans restriction d’authentification
+    return true;
 });
 
 Broadcast::channel('transporter.{transporterId}', function ($user, $transporterId) {
     // Exemple : vérifier que l’utilisateur peut écouter ce transporteur
     // return (int) $user->transporter_id === (int) $transporterId;
+    logger('tr****************' . $transporterId);
     return true;
 });

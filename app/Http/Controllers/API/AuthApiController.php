@@ -34,6 +34,12 @@ class AuthApiController
         }
         $customer=null;
         switch ($req->user_type){
+
+            case User::TYPE_ADMIN:
+                $customer = User::where(['phone'=>$req->phone,'user_type'=>User::TYPE_ADMIN])
+                    ->first();
+                break;
+
             case User::TYPE_CUSTOMER:
                 $customer = User::where(['phone'=>$req->phone,'user_type'=>User::TYPE_CUSTOMER])
                     ->first();
@@ -57,6 +63,7 @@ class AuthApiController
             return response()->json(['error' => 'invalid_credentials'], 401);
         }
         return Helpers::success([
+            'user_id'=>$customer->id,
             'name'=>$customer->first_name.' '.$customer->last_name,
             'phone'=>$customer->phone,
             'access_token' => $token,
@@ -148,6 +155,9 @@ class AuthApiController
             }
 
             return Helpers::success([
+                'name'=>$customer->first_name.' '.$customer->last_name,
+                'user_id'=>$customer->id,
+                'phone'=>$customer->phone,
                 'access_token' => $token,
                 'token_type' => 'bearer',
                 'expires_in' => auth('api')->factory()->getTTL() * 60

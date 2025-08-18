@@ -16,6 +16,13 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->enum('type',['SHOP','RESTAURANT']);
+            $table->string('image')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('ingredients', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('image')->nullable();
             $table->timestamps();
         });
         Schema::create('cities', function (Blueprint $table) {

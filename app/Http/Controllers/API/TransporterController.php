@@ -8,12 +8,11 @@ use App\Events\NewNotification;
 use App\Events\TransporterPositionUpdated;
 use App\Helpers\api\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\DriverPosition;
 use App\Models\LineItem;
 use App\Models\Notification;
 use App\Models\Order;
-use App\Models\Store;
 use App\Models\TransporterPosition;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -100,43 +99,29 @@ class TransporterController extends Controller
         return Helpers::success($orders, 'Commandes récupérées avec succès');
     }
 
-    public function updateTransporterPosition(Request $request, $orderId)
+    public function updateTransporterPosition(Request $request)
     {
-        $lat = $request->input('lat');
-        $lng = $request->input('lng');
-
+        $driverId = $request->input('driver_id');
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
         // Stocker en base
-        $pos = TransporterPosition::updateOrCreate(
-            ['order_id' => $orderId],
+        $pos = DriverPosition::updateOrCreate(
+            ['driver_id' => $driverId],
             ['lat' => $lat, 'lng' => $lng]
         );
-
-        // Diffuser événement WebSocket
-        event(new TransporterPositionUpdated([ 'transporterId'=>7,
-            'lat'=>$lat,
-            'lng'=>$lng]));
-
+        $this->getLastCourseByDriver($driverId,$lat,$lng);
         return response()->json(['status' => 'ok']);
     }
-/*    public function updateTransporterPosition(Request $request, $orderId)
-    {
-        $lat = $request->input('lat');
-        $lng = $request->input('lng');
 
-        // Stocker en base
-        $pos = TransporterPosition::updateOrCreate(
-            ['order_id' => $orderId],
-            ['lat' => $lat, 'lng' => $lng]
-        );
-
-        // Diffuser événement WebSocket
-        event(new TransporterPositionUpdated([ 'transporterId'=>7,
-            'lat'=>$lat,
-            'lng'=>$lng]));
-
-        return response()->json(['status' => 'ok']);
-    }*/
-
+    private function getLastCourseByDriver($driverId,$lat,$lng){
+        $order=Order::query()->where(['transporter_id'=>$driverId,'status'=>Order::EN_COURS_LIVRAISON])->latest()->first();
+        if (!is_null($order)){
+            // Diffuser événement WebSocket
+            event(new TransporterPositionUpdated([ 'transporterId'=>7,
+                'lat'=>$lat,
+                'lng'=>$lng]));
+        }
+    }
     public function getTransporterPosition($orderId)
     {
         $pos = TransporterPosition::where('order_id', $orderId)->latest()->first();
@@ -147,6 +132,25 @@ class TransporterController extends Controller
 
         return response()->json(null, 404);
     }
+    public function getOrderStats()
+    {
+        $customer = Auth::user();
+        $orders = Order::where('transporter_id', $customer->id)->get();
+
+        // Commandes en attente (non livrées)
+        $pending = $orders->where('status', '==', Order::EN_COURS_LIVRAISON)->count();
+
+        // Commandes complétées (livrées)
+        $complete = $orders->where('status', Order::LIVREE)->count();
+
+        return Helpers::success([
+            'deliveryStats' => [
+                'pending'   => $pending,
+                'completed' => $complete
+            ]
+        ]);
+    }
+
     public function updateStatus(Request $request,$id)
     {
         $driver = Auth::user();
@@ -161,6 +165,7 @@ class TransporterController extends Controller
             return Helpers::error($err);
         }
 
+        logger($request->all());
         try {
             DB::transaction(function () use ($id, $request, $driver) {
 
@@ -204,6 +209,7 @@ class TransporterController extends Controller
             return Helpers::success(null, 'Commande attribuée avec succès');
 
         } catch (\Exception $e) {
+            logger($e->getMessage());
             return Helpers::error($e->getMessage());
         }
     }

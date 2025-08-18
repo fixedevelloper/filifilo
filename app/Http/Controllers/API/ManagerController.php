@@ -23,6 +23,59 @@ use Illuminate\Support\Facades\Validator;
 
 class ManagerController extends Controller
 {
+    public function getOrderHome(Request $request){
+        $customer = Auth::user();
+        $store=Store::query()->firstWhere(['vendor_id'=>$customer->id]);
+        if (is_null($store)){
+            return Helpers::error('Vous n etes pas vendeur');
+        }
+        $pendings = Order::where(['store_id'=> $store->id,'status'=>Order::EN_ATTENTE])->orderByDesc("created_at")->get()->map(function ($order) {
+            $lines=LineItem::where('order_id',$order->id)->get()->map(function ($line){
+                return [
+                    'id'          => $line->id,
+                    'name'          => $line->name,
+                    'quantity'          => $line->quantity,
+                    'price'          => $line->price,
+                ];
+            });
+            return [
+                'id'          => $order->id,
+                'reference'        => $order->reference,
+                'quantity'       => $order->quantity,
+                'status'   => $order->status,
+                'total_ttc' => $order->total_ttc,
+                'total' => $order->total,
+                'items'=>$lines,
+                'customer_name' => $order->customer->first_name.' '.$order->customer->last_name,
+                'date' => $order->created_at->toDateTimeString(),
+            ];
+        });
+        $runings= Order::where(['store_id'=> $store->id,'status'=>Order::PREPARATION])->orderByDesc("created_at")->get()->map(function ($order) {
+            $lines=LineItem::where('order_id',$order->id)->get()->map(function ($line){
+                return [
+                    'id'          => $line->id,
+                    'name'          => $line->name,
+                    'quantity'          => $line->quantity,
+                    'price'          => $line->price,
+                ];
+            });
+            return [
+                'id'          => $order->id,
+                'reference'        => $order->reference,
+                'quantity'       => $order->quantity,
+                'status'   => $order->status,
+                'total_ttc' => $order->total_ttc,
+                'total' => $order->total,
+                'items'=>$lines,
+                'customer_name' => $order->customer->first_name.' '.$order->customer->last_name,
+                'date' => $order->created_at->toDateTimeString(),
+            ];
+        });
+        return Helpers::success([
+            'pendingOrders'=>$pendings,
+            'runingsOrders'=>$runings,
+        ], 'Commandes récupérés avec succès');
+    }
     public function getStore(Request $request){
         $customer = Auth::user();
         $store=Store::query()->firstWhere(['vendor_id'=>$customer->id]);

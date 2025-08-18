@@ -3,39 +3,26 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\api\Helpers;
 use Closure;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class JwtAuthMiddleware
 {
     public function handle($request, Closure $next)
     {
-        $authHeader = $request->header('Authorization');
-
-        if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
-        $token = $matches[1];
-
         try {
-            $publicKey = file_get_contents('public.pem'); // clé publique correspondante
-            $credentials = JWT::decode($token, new Key($publicKey, 'RS256'));
-            $userId = $credentials->sub;
+            $user = JWTAuth::parseToken()->authenticate();
+        } catch (TokenExpiredException $e) {
+            return Helpers::unauthorized($e->getCode(),'Token expiré');
+        } catch (TokenInvalidException $e) {
+            return Helpers::unauthorized($e->getCode(),'Token invalide');
 
-            $user = User::find($userId);
-            if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-            //logger($user);
-            // Authentifie l’utilisateur Laravel pour cette requête
-            Auth::login($user);
-           } catch (\Exception $e) {
-            logger($e);
-            return response()->json(['error' => 'Unauthorized'], 401);
+        } catch (JWTException $e) {
+            return Helpers::unauthorized($e->getCode(),'Token absent ou invalide');
         }
 
         return $next($request);

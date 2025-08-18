@@ -21,8 +21,9 @@ class Order extends Model
 
     public function getTimeAgoAttribute()
     {
-        return $this->created_at->diffForHumans();
-    }
+        return $this->created_at?->diffForHumans() ?? 'Non défini';
+}
+
     public function store()
     {
         return $this->belongsTo(Store::class,'store_id','id');
