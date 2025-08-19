@@ -8,6 +8,7 @@ use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Models\Ingredient;
 use App\Models\LineItem;
 use App\Models\Notification;
 use App\Models\Order;
@@ -131,6 +132,69 @@ class ManagerController extends Controller
                 'id' => $product->id,
                 'name' => $product->name,
                 'price' => $product->price,
+                'stock' => $product->stock,
+                'is_active' => $product->is_active?true:false,
+                'image_url' => $product->imageUrl,
+                'category_id' => $product->category_id,
+                'store_id' => $product->store_id,
+                'store_name' => $product->store->name,
+                'category_name' => $product->category->name,
+                'created_at' => $product->created_at->toDateTimeString(),
+            ];
+        });
+        logger($products);
+        return Helpers::success($products, 'Produits récupérés avec succès');
+    }
+
+    public function productById(Request $request, $id)
+    {
+        $product =  Product::with(['store', 'category', 'ingredients'])->find($id);
+
+        if (!$product) {
+            return Helpers::error('Produit non trouvé');
+        }
+
+        $data = [
+            'id' => $product->id,
+            'name' => $product->name,
+            'price' => $product->price,
+            'stock' => $product->stock,
+            'is_active' => $product->is_active ? true : false,
+            'image_url' => $product->imageUrl,
+            'category_id' => $product->category_id,
+            'category' => $product->category,
+            'ingredients' => $product->ingredients->map(function($ingredient){
+                return [
+                    'id' => $ingredient->id,
+                    'name' => $ingredient->name,
+                ];
+            }),
+            'store_id' => $product->store_id,
+            'store_name' => $product->store->name,
+            'details' => $product->description,
+            'category_name' => $product->category->name,
+            'created_at' => $product->created_at->toDateTimeString(),
+        ];
+
+        return Helpers::success($data, 'Produit récupéré avec succès');
+    }
+
+
+    public function featured_products(Request $request)
+    {
+        $customer = Auth::user();
+        $store=Store::query()->firstWhere(['vendor_id'=>$customer->id]);
+        if (is_null($store)){
+            return Helpers::error('Vous n etes pas vendeur');
+        }
+
+        $products = Product::where('store_id', $store->id)->orderBy('name', 'asc')->get()->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->price,
+                'stock' => $product->stock,
+                'is_active' => $product->is_active?true:false,
                 'image_url' => $product->imageUrl,
                 'category_id' => $product->category_id,
                 'store_id' => $product->store_id,
@@ -171,58 +235,148 @@ class ManagerController extends Controller
     public function createProduct(Request $request)
     {
         $customer = Auth::user();
-        $store=Store::query()->firstWhere(['vendor_id'=>$customer->id]);
-        if (is_null($store)){
-            return Helpers::error('Vous n etes pas vendeur');
+        $store = Store::query()->firstWhere(['vendor_id' => $customer->id]);
+
+        if (is_null($store)) {
+            return Helpers::error('Vous n\'êtes pas vendeur');
         }
-        $validator=   Validator::make($request->all(),[
-            'name' => 'required|string',
-            'price' => 'required|numeric',
+        // Validation des champs
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'price'       => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
-            'ingredients' => 'required|string',
-            'details' => 'nullable|string',
-            'delivery' => 'nullable|string',
-            'pickUp' => 'nullable|string',
-            'image' => 'nullable|image|max:2048', // max 2Mo par exemple
+            'ingredients' => 'required|string', // IDs séparés par des virgules
+            'details'     => 'nullable|string',
+            'delivery'    => 'nullable|string',
+            'pickUp'      => 'nullable|string',
+            'image'       => 'nullable|image|max:2048',
         ]);
 
         if ($validator->fails()) {
-            $err = null;
-            foreach ($validator->errors()->all() as $error) {
-                $err = $error;
-            }
-            return Helpers::error($err);
+            return Helpers::error($validator->errors()->first());
         }
-        $imagePath=null;
+
+        // Vérifier que tous les IDs d'ingrédients existent
+        $ingredientIds = array_map('intval', explode(',', $request->ingredients));
+        foreach ($ingredientIds as $id) {
+            if (!Ingredient::where('id', $id)->exists()) {
+                return Helpers::error("L'ingrédient avec l'ID $id n'existe pas.");
+            }
+        }
+
+        $imagePath = null;
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('products', 'public');
         }
 
         DB::beginTransaction();
-
         try {
             $product = Product::create([
-                'name' => $request->name,
-                'price' => $request->price,
-                'store_id' => $store->id,
+                'name'        => $request->name,
+                'price'       => $request->price,
+                'store_id'    => $store->id,
                 'category_id' => $request->category_id,
-                'imageUrl'=>$imagePath
+                'imageUrl'    => $imagePath
             ]);
 
+            // Attacher les ingrédients existants
+            $product->ingredients()->sync($ingredientIds);
+
             DB::commit();
-
-            return Helpers::success($product, 'Produit créée avec succès');
-
-        }
-        catch (\Exception $e) {
+            return Helpers::success($product, 'Produit créé avec succès');
+        } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la création du produit', [
                 'message' => $e->getMessage(),
-                'stack' => $e->getTraceAsString(),
+                'stack'   => $e->getTraceAsString(),
             ]);
-            return Helpers::error('Une erreur est survenue lors de la création ddu produit');
+            return Helpers::error('Une erreur est survenue lors de la création du produit');
         }
     }
+    public function updateProduct(Request $request,$id)
+    {
+        $customer = Auth::user();
+        $product = Product::query()->firstWhere(['id' => $id]);
+
+        if (is_null($product)) {
+            return Helpers::error('Vous n\'êtes pas vendeur');
+        }
+logger($request->all());
+        // Validation des champs
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'price'       => 'required|numeric',
+            'category_id' => 'required|exists:categories,id',
+            'ingredients' => 'required|string', // IDs séparés par des virgules
+            'details'     => 'nullable|string',
+            'delivery'    => 'nullable|string',
+            'pickUp'      => 'nullable|string',
+            'image'       => 'nullable|image|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return Helpers::error($validator->errors()->first());
+        }
+
+        // Vérifier que tous les IDs d'ingrédients existent
+        $ingredientIds = array_map('intval', explode(',', $request->ingredients));
+        foreach ($ingredientIds as $id) {
+            if (!Ingredient::where('id', $id)->exists()) {
+                return Helpers::error("L'ingrédient avec l'ID $id n'existe pas.");
+            }
+        }
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('products', 'public');
+        }
+
+        DB::beginTransaction();
+        try {
+            $product->update([
+                'name'        => $request->name,
+                'price'       => $request->price,
+                'category_id' => $request->category_id,
+                'imageUrl'    => $imagePath
+            ]);
+
+            // Attacher les ingrédients existants
+            $product->ingredients()->sync($ingredientIds);
+
+            DB::commit();
+            return Helpers::success($product, 'Produit créé avec succès');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création du produit', [
+                'message' => $e->getMessage(),
+                'stack'   => $e->getTraceAsString(),
+            ]);
+            return Helpers::error('Une erreur est survenue lors de la création du produit');
+        }
+    }
+    public function updateStock(Request $request, $id)
+    {
+        // Validation des données
+        $validated = $request->validate([
+            'stock' => 'required|integer|min:0',
+            'isActive' => 'required|boolean',
+        ]);
+
+        // Récupération du produit
+        $product = Product::findOrFail($id);
+
+        // Mise à jour
+        $product->stock = $validated['stock'];
+        $product->is_active = $validated['isActive'];
+        $product->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock mis à jour avec succès',
+            'data' => $product
+        ], 200);
+    }
+
     public function updateStatus(Request $request)
     {
         $customer = Auth::user();
@@ -285,7 +439,7 @@ class ManagerController extends Controller
         $data = [
             'totalRevenue' => '12345.67',
             'chartData' => [
-                ['label' => 'Jan', 'value' => 5000],
+                ['label' => 'Jan', 'value' => 2000],
                 ['label' => 'Fév', 'value' => 6400],
                 ['label' => 'Mar', 'value' => 7200],
             ]

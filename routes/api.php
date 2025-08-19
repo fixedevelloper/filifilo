@@ -25,7 +25,7 @@ Route::middleware( ['jwt.verify'])->group(function () {
     Route::get('/search', [StoreController::class, 'search']);
     Route::get('/stores', [StoreController::class, 'stores']);
     Route::get('/categories', [StoreController::class, 'categories']);
-    Route::get('/ingredients', [StoreController::class, 'categories']);
+    Route::get('/ingredients', [StoreController::class, 'ingredients']);
     Route::get('/products/{store_id}', [StoreController::class, 'products']);
     Route::get('/stores/{id}', [StoreController::class, 'getDeatailStore']);
     Route::post('/orders', [OrderController::class, 'createOrder']);
@@ -39,10 +39,13 @@ Route::middleware( ['jwt.verify'])->group(function () {
     Route::post('/profile', [AuthApiController::class, 'updateProfile']);
     Route::post('/change_password', [AuthApiController::class, 'changePassword']);
 
+    Route::put('vendors/updatestock/{id}', [ManagerController::class, 'updateStock']);
+    Route::post('vendors/product/{id}', [ManagerController::class, 'updateProduct']);
     Route::get('vendors/homedata', [ManagerController::class, 'getOrderHome']);
     Route::get('vendors/store', [ManagerController::class, 'getStore']);
     Route::get('vendors/products', [ManagerController::class, 'products']);
-    Route::get('vendors/products/{id}', [ManagerController::class, 'products']);
+    Route::get('vendors/featured_products', [ManagerController::class, 'featured_products']);
+    Route::get('vendors/products/{id}', [ManagerController::class, 'productById']);
     Route::get('vendors/orders', [ManagerController::class, 'orders']);
     Route::post('vendors/products', [ManagerController::class, 'createProduct']);
     Route::post('vendors/orders/status', [ManagerController::class, 'updateStatus']);

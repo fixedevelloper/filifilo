@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API;
 use App\Helpers\api\Helpers;
 use App\Helpers\Helper;
 use App\Models\Category;
+use App\Models\Ingredient;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Http\Request;
@@ -23,6 +24,13 @@ class StoreController
         }
 
         $message = 'categories get successful';
+        return Helpers::success($lists, $message);
+    }
+    public function ingredients(Request $request)
+    {
+            $lists = Ingredient::query()->where([])->get();
+
+        $message = 'ingredients get successful';
         return Helpers::success($lists, $message);
     }
 

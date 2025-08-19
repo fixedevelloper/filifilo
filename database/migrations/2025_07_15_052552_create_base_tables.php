@@ -25,6 +25,7 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->timestamps();
         });
+
         Schema::create('cities', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -36,7 +37,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('imageUrl')->nullable();
-            $table->enum('type',['SHOP','RESTAURANT']);
+            $table->enum('type',['SHOP','RESTAURANT','PRESSING','OTHERS']);
             $table->string('phone')->nullable();
             $table->string('address')->nullable();
             $table->string('latitude')->nullable();
@@ -64,8 +65,16 @@ return new class extends Migration
             $table->string('name');
             $table->decimal('price')->default(0.0);
             $table->string('imageUrl')->nullable();
+            $table->integer('stock')->default(0);
+            $table->boolean('is_active')->default(true);
             $table->foreignId('store_id')->nullable()->constrained("stores",'id')->nullOnDelete();
             $table->foreignId('category_id')->nullable()->constrained("categories",'id')->nullOnDelete();
+            $table->timestamps();
+        });
+        Schema::create('ingredient_product', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('ingredient_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
 
