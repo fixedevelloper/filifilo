@@ -31,7 +31,10 @@ class User extends Authenticatable implements JWTSubject
         'user_type',
         'password',
     ];
-
+    public function vehicule()
+    {
+        return $this->hasOne(Vehicule::class, 'driver_id');
+    }
     /**
      * The attributes that should be hidden for serialization.
      *

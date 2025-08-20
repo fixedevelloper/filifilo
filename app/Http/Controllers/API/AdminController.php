@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
+use App\Models\Vehicule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +92,64 @@ class AdminController extends Controller
             'per_page' => $paginator->perPage(),
             'total' => $paginator->count(),
         ]);
+    }
+    public function createVehicule(Request $request)
+    {
+        $customer = Auth::user();
+
+        // 1️⃣ Validation des champs
+        $validator = Validator::make($request->all(), [
+            'brand'       => 'required|string',
+            'model'       => 'required|string',
+            'color'       => 'nullable|string',
+            'numberplate' => 'required|string|unique:vehicules,numberplate',
+            'milage'      => 'nullable|string',
+            'passenger'   => 'nullable|integer|min:1',
+            'type'        => 'nullable|string',
+            'driver_id'   => 'nullable|integer',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048', // ⚡ sécurisation image
+        ]);
+
+        if ($validator->fails()) {
+            $err = $validator->errors()->first();
+            return Helpers::error($err);
+        }
+
+        $validated = $validator->validated();
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('vehicules', 'public');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // ⚡ Utiliser la relation OneToOne
+            $vehicule = Vehicule::create([
+                'brand'       => $validated['brand'],
+                'model'       => $validated['model'],
+                'color'       => $validated['color'] ?? null,
+                'numberplate' => $validated['numberplate'],
+                'milage'      => $validated['milage'] ?? null,
+                'passenger'   => $validated['passenger'] ?? 1,
+                'type'        => $validated['type'] ?? null,
+                'driver_id'        => $validated['driver_id'] ?? null,
+                'image'       => $imagePath,
+            ]);
+
+            DB::commit();
+
+            return Helpers::success($vehicule, 'Véhicule créé avec succès ✅');
+        }
+        catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création du véhicule', [
+                'message' => $e->getMessage(),
+                'stack'   => $e->getTraceAsString(),
+            ]);
+            return Helpers::error('Une erreur est survenue lors de la création du véhicule');
+        }
     }
 
     public function createIngredient(Request $request)

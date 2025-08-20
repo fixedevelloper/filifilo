@@ -30,7 +30,9 @@ Route::middleware( ['jwt.verify'])->group(function () {
     Route::get('/stores/{id}', [StoreController::class, 'getDeatailStore']);
     Route::post('/orders', [OrderController::class, 'createOrder']);
     Route::get('/orders', [OrderController::class, 'orders']);
+    Route::post('/vehicules', [TransporterController::class, 'createVehicule']);
     Route::get('/orders/transporters', [TransporterController::class, 'orders']);
+    Route::get('/vehicules/me', [TransporterController::class, 'getMeVehicule']);
     Route::get('/orders/transporters/my', [TransporterController::class, 'myOrders']);
     Route::get('/orders/transporters/stats', [TransporterController::class, 'getOrderStats']);
     Route::put('/drivers/order/{id}/status', [TransporterController::class, 'updateStatus']);

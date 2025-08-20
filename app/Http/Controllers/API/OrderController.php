@@ -60,7 +60,7 @@ class OrderController extends Controller
             }
             $store=Store::find($request->store_id);
             $order = Order::create([
-                'type' => $store->type,
+                'type' => $request->type,
                 'quantity' => count($items),
                 'total_ttc' => $total,
                 'total' => $total,

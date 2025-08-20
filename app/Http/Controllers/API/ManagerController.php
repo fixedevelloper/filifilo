@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class ManagerController extends Controller
@@ -266,7 +267,10 @@ class ManagerController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('products', 'public');
+            $imagePath = $request->file('image')->store('products', 'public'); // stockage relatif
+            $imageUrl  = env('APP_URL') . Storage::url($imagePath); // URL complète
+        } else {
+            $imageUrl = null;
         }
 
         DB::beginTransaction();
@@ -276,7 +280,7 @@ class ManagerController extends Controller
                 'price'       => $request->price,
                 'store_id'    => $store->id,
                 'category_id' => $request->category_id,
-                'imageUrl'    => $imagePath
+                'imageUrl'    => $imageUrl
             ]);
 
             // Attacher les ingrédients existants
@@ -301,7 +305,6 @@ class ManagerController extends Controller
         if (is_null($product)) {
             return Helpers::error('Vous n\'êtes pas vendeur');
         }
-logger($request->all());
         // Validation des champs
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string',
@@ -328,7 +331,10 @@ logger($request->all());
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('products', 'public');
+            $imagePath = $request->file('image')->store('products', 'public'); // stockage relatif
+            $imageUrl  = env('APP_URL') . Storage::url($imagePath); // URL complète
+        } else {
+            $imageUrl = null;
         }
 
         DB::beginTransaction();
@@ -337,7 +343,7 @@ logger($request->all());
                 'name'        => $request->name,
                 'price'       => $request->price,
                 'category_id' => $request->category_id,
-                'imageUrl'    => $imagePath
+                'imageUrl'    => $imageUrl
             ]);
 
             // Attacher les ingrédients existants

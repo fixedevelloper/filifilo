@@ -13,10 +13,12 @@ use App\Models\LineItem;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\TransporterPosition;
+use App\Models\Vehicule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class TransporterController extends Controller
@@ -212,5 +214,124 @@ class TransporterController extends Controller
             logger($e->getMessage());
             return Helpers::error($e->getMessage());
         }
+    }
+    public function createVehicule(Request $request)
+    {
+        $customer = Auth::user();
+
+        // 1️⃣ Validation des champs
+        $validator = Validator::make($request->all(), [
+            'brand'       => 'required|string',
+            'model'       => 'required|string',
+            'color'       => 'nullable|string',
+            'numberplate' => 'required|string',
+            'milage'      => 'nullable|string',
+            'passenger'   => 'nullable|integer|min:1',
+            'type'        => 'nullable|string',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048', // ⚡ sécurisation image
+        ]);
+
+        if ($validator->fails()) {
+            $err = $validator->errors()->first();
+            return Helpers::error($err);
+        }
+
+        $validated = $validator->validated();
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('vehicules', 'public');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // ⚡ Utiliser la relation OneToOne
+            $vehicule = $customer->vehicule()->updateOrCreate(
+                ['driver_id' => $customer->id], // condition de recherche
+                [
+                    'numberplate' => $validated['numberplate'],
+                    'brand'       => $validated['brand'],
+                    'model'       => $validated['model'],
+                    'color'       => $validated['color'] ?? null,
+                    'milage'      => $validated['milage'] ?? null,
+                    'passenger'   => $validated['passenger'] ?? 1,
+                    'type'        => $validated['type'] ?? null,
+                    'image'       => $imagePath,
+                ]
+            );
+
+
+            DB::commit();
+
+            return Helpers::success($vehicule, 'Véhicule créé avec succès ✅');
+        }
+        catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création du véhicule', [
+                'message' => $e->getMessage(),
+                'stack'   => $e->getTraceAsString(),
+            ]);
+            return Helpers::error('Une erreur est survenue lors de la création du véhicule');
+        }
+    }
+    public function updateVehicule(Request $request)
+    {
+        $customer = Auth::user();
+
+        // Vérifier si le user a déjà un véhicule
+        $vehicule = $customer->vehicule;
+        if (!$vehicule) {
+            return Helpers::error("Aucun véhicule trouvé pour cet utilisateur.");
+        }
+
+        // 1️⃣ Validation des champs
+        $validator = Validator::make($request->all(), [
+            'brand'       => 'nullable|string',
+            'model'       => 'nullable|string',
+            'color'       => 'nullable|string',
+            'numberplate' => 'nullable|string|unique:vehicules,numberplate,' . $vehicule->id,
+            'milage'      => 'nullable|string',
+            'passenger'   => 'nullable|integer|min:1',
+            'type'        => 'nullable|string',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            $err = $validator->errors()->first();
+            return Helpers::error($err);
+        }
+
+        $validated = $validator->validated();
+
+        // 2️⃣ Gestion de l'image
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('vehicules', 'public');
+            $validated['image'] = $imagePath;
+        }
+
+        DB::beginTransaction();
+        try {
+            // 3️⃣ Mise à jour du véhicule
+            $vehicule->update($validated);
+
+            DB::commit();
+            return Helpers::success($vehicule, "Véhicule mis à jour avec succès ✅");
+        }
+        catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la mise à jour du véhicule', [
+                'message' => $e->getMessage(),
+                'stack'   => $e->getTraceAsString(),
+            ]);
+            return Helpers::error('Une erreur est survenue lors de la mise à jour du véhicule.');
+        }
+    }
+    public function getMeVehicule()
+    {
+        $driver = Auth::user();
+        $vehicule = Vehicule::where('driver_id', $driver->id)->latest()->first();
+
+        return Helpers::success($vehicule);
     }
 }

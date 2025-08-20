@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class AuthApiController
@@ -128,7 +129,10 @@ class AuthApiController
             if ($data['user_type'] === User::TYPE_VENDOR) {
                 $imagePath = null;
                 if ($request->hasFile('store_image')) {
-                    $imagePath = $request->file('store_image')->store('stores', 'public');
+                    $imagePath = $request->file('store_image')->store('stores', 'public'); // stockage relatif
+                    $imageUrl  = env('APP_URL') . Storage::url($imagePath); // URL complète
+                } else {
+                    $imageUrl = null;
                 }
                 Store::create([
                     'latitude' => $data['store_latitude'] ?? null,
@@ -138,7 +142,8 @@ class AuthApiController
                     'address' => $data['store_address'] ?? null,
                     'phone' => $data['store_phone'] ?? null,
                     'vendor_id' => $customer->id,
-                    'imageUrl' => $imagePath ? asset('storage/' . $imagePath) : null
+                   // 'imageUrl' => $imagePath ? asset('storage/' . $imagePath) : null
+                    'imageUrl'=>$imageUrl
                 ]);
             }
 
