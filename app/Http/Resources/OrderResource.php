@@ -23,6 +23,7 @@ class OrderResource extends JsonResource
             'store_name' => $this->store->name ?? 'Inconnu',
             'store_latitude' => $this->store->latitude ?? '4.12',
             'store_longitude' => $this->store->longitude ?? '6.02',
+            'store_address' => $this->store->address ?? '6.02',
             'date'       => $this->created_at->toDateTimeString(),
             'items'      => $this->lineItems->map(function ($line) {
                 return [

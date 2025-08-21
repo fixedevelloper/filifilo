@@ -22,6 +22,8 @@ Route::post('/driver/location', [TransporterController::class, 'updateTransporte
 
 Route::middleware( ['jwt.verify'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/countries', [StoreController::class, 'countries']);
+    Route::get('/cities/{id}', [StoreController::class, 'cities']);
     Route::get('/search', [StoreController::class, 'search']);
     Route::get('/stores', [StoreController::class, 'stores']);
     Route::get('/categories', [StoreController::class, 'categories']);
@@ -57,8 +59,14 @@ Route::middleware( ['jwt.verify'])->group(function () {
 
     Route::post('admins/categories', [AdminController::class, 'createCategory']);
     Route::get('admins/categories', [AdminController::class, 'categories']);
-    Route::get('admins/drivers/online', [AdminController::class, 'driverOnline']);
+    Route::post('admins/ingredients', [AdminController::class, 'createIngredient']);
+    Route::get('admins/ingredients', [AdminController::class, 'ingredients']);
+    Route::get('admins/stores', [AdminController::class, 'getStores']);
+    Route::get('admins/customers', [AdminController::class, 'getCustomers']);
+    Route::get('admins/drivers/online', [AdminController::class, 'driverByOnline']);
     Route::get('admins/drivers', [AdminController::class, 'getDrivers']);
+    Route::get('admins/products', [AdminController::class, 'getProducts']);
+    Route::get('admins/drivers/info/{id}', [AdminController::class, 'getInfoDriver']);
     Route::get('admins/orders', [AdminController::class, 'getOrders']);
 });
 
