@@ -250,9 +250,9 @@ class TransporterController extends Controller
             $vehicule = $customer->vehicule()->updateOrCreate(
                 ['driver_id' => $customer->id], // condition de recherche
                 [
-                    'numberplate' => $validated['numberplate'],
-                    'brand'       => $validated['brand'],
-                    'model'       => $validated['model'],
+                    'numberplate' => $validated['numberplate']?? null,
+                    'brand'       => $validated['brand']?? null,
+                    'model'       => $validated['model']?? null,
                     'color'       => $validated['color'] ?? null,
                     'milage'      => $validated['milage'] ?? null,
                     'passenger'   => $validated['passenger'] ?? 1,
