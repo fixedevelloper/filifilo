@@ -30,10 +30,10 @@ class AuthController extends Controller
                 'password'    => 'required|string|min:6',
                 'phone'    => 'required|string|min:6',
                 'user_type'   => 'nullable|in:customer,admin,merchant,driver',
-                'address'     => 'required_if:user_type,customer|string|max:255',
+/*                'address'     => 'required_if:user_type,customer|string|max:255',
                 'address_line'=> 'required_if:user_type,customer|string|max:255',
                 'latitude'    => 'required_if:user_type,customer|numeric',
-                'longitude'   => 'required_if:user_type,customer|numeric',
+                'longitude'   => 'required_if:user_type,customer|numeric',*/
                 //'city_id'     => 'required_if:user_type,customer|exists:cities,id',
                 //'country_id'  => 'required_if:user_type,customer|exists:countries,id',
             ]);
@@ -56,27 +56,12 @@ class AuthController extends Controller
                     $customer = Customer::create([
                         'user_id' => $user->id,
                     ]);
-                    $geoData = GeoHelper::getAddressFromCoordinates($validated['latitude'], $validated['longitude']);
-                   // logger($geoData);
-                    $address = Address::create([
-                        'label'        => $validated['address'],
-                        'address_line' => $validated['address_line'],
-                        'latitude'     => $validated['latitude'],
-                        'longitude'    => $validated['longitude'],
-                        'customer_id'  => $customer->id,
-                        'city_id'=>1,
-                        'country_id'=>1,
-                    ]);
+                   // $geoData = GeoHelper::getAddressFromCoordinates($validated['latitude'], $validated['longitude']);
 
                     return Helpers::success([
                         'user_id'      => $user->id,
                         'access_token' => $token,
                         'token_type'   => 'Bearer',
-                        'address_id' => $address->id,
-                        'address' => $address->label,
-                        'address_line' => $address->address_line,
-                        'longitude'    => $address->longitude,
-                        'latitude'     => $address->latitude,
                     ]);
                 }
 
