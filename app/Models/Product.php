@@ -2,21 +2,43 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'price', 'imageUrl', 'store_id', 'category_id','stock','is_active'];
-    public function category()
-    {
-        return $this->belongsTo(Category::class,'category_id','id');
-    }
+    use HasFactory;
+
+    protected $fillable = [
+        'store_id', 'category_id', 'name', 'description', 'price',
+        'stock_quantity','reserved_quantity','stock_alert_level',
+        'status','ingredients','addons','is_deliverable','is_pickup','image_url'
+    ];
+
+    protected $casts = [
+        'ingredients' => 'array',
+        'addons' => 'array',
+        'is_deliverable' => 'boolean',
+        'is_pickup' => 'boolean',
+    ];
+
     public function store()
     {
-        return $this->belongsTo(Store::class,'store_id','id');
+        return $this->belongsTo(Store::class);
     }
-    public function ingredients()
+
+    public function category()
     {
-        return $this->belongsToMany(Ingredient::class, 'ingredient_product');
+        return $this->belongsTo(Category::class);
     }
+
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+    public function ratings()
+    {
+        return $this->morphMany(Rating::class, 'rateable');
+    }
+
 }

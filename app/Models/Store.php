@@ -2,21 +2,35 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Store extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'name', 'type', 'phone', 'address',
-        'latitude', 'longitude', 'time_open', 'time_close',
-        'note', 'is_close', 'vendor_id', 'city_id'
+        'merchant_id', 'name', 'store_type', 'city_id', 'country_id',
+        'latitude','longitude','status','image_url'
     ];
-    public function vendor()
+
+    public function merchant()
     {
-        return $this->belongsTo(User::class,'vendor_id','id');
+        return $this->belongsTo(Merchant::class);
     }
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
     public function city()
     {
-        return $this->belongsTo(City::class,'city_id','id');
+        return $this->belongsTo(City::class);
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class);
     }
 }

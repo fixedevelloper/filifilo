@@ -4,13 +4,20 @@
 namespace App\Models;
 
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
 {
-    protected $fillable = [
-        'username', 'profile_image', 'action_text', 'time', 'thumbnail_url','user_id'
-    ];
+
+    use HasFactory;
+
+    protected $fillable = ['recipient_type','recipient_id','order_id','title','message','status','sent_at'];
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
     protected $appends = ['time_ago'];
 
     public function getTimeAgoAttribute()

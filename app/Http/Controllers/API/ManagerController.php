@@ -115,6 +115,7 @@ class ManagerController extends Controller
                 'items'=>$lines,
                 'customer_name' => $order->customer->first_name.' '.$order->customer->last_name,
                 'date' => $order->created_at->toDateTimeString(),
+                'date_group' => $order->created_at->format('Y-m-d'),
             ];
         });
 
@@ -278,6 +279,7 @@ class ManagerController extends Controller
             $product = Product::create([
                 'name'        => $request->name,
                 'price'       => $request->price,
+                'details'       => $request->details,
                 'store_id'    => $store->id,
                 'category_id' => $request->category_id,
                 'imageUrl'    => $imageUrl

@@ -2,58 +2,74 @@
 
 namespace Database\Seeders;
 
+use App\Models\Customer;
+use App\Models\Driver;
+use App\Models\Merchant;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    public function run(): void
+    public function run()
     {
-        $roles = ['CLIENT', 'VENDOR', 'ADMIN'];
-        $userTypes = [1, 2, 3]; // À adapter selon ta logique métier
+        // ----- 1 Admin -----
+        User::create([
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'phone' => '600000000',
+            'user_type' => 'admin',
+        ]);
 
-        // Créer d’abord quelques parrains (ex: 5)
-        $parrains = [];
-
-        for ($i = 0; $i < 5; $i++) {
+        // ----- 13 Clients -----
+        for ($i = 1; $i <= 13; $i++) {
             $user = User::create([
-                'first_name' => fake()->firstName(),
-                'last_name'  => fake()->lastName(),
-                'phone'      => fake()->phoneNumber(),
-                'address'    => fake()->address(),
-                'parrain_id' => 0,
-                'sold'       => fake()->numberBetween(1000, 10000),
-                'last_sold'  => fake()->numberBetween(500, 9000),
-                'user_type'  => fake()->randomElement($userTypes),
-                'photo'      => null,
-                'role'       => 'VENDOR',
-                'email'      => fake()->unique()->safeEmail(),
-                'activate'   => true,
-                'email_verified_at' => now(),
-                'password'   => Hash::make('password'), // mot de passe par défaut
+                'name' => "Client $i",
+                'email' => "client$i@example.com",
+                'password' => Hash::make('password'),
+                'phone' => '69000000' . str_pad($i, 2, '0', STR_PAD_LEFT),
+                'user_type' => 'customer',
             ]);
 
-            $parrains[] = $user->id;
+            // Création du profil client
+            Customer::create([
+                'user_id' => $user->id,
+            ]);
         }
 
-        // Créer 15 utilisateurs avec un parrain aléatoire
-        for ($i = 0; $i < 15; $i++) {
-            User::create([
-                'first_name' => fake()->firstName(),
-                'last_name'  => fake()->lastName(),
-                'phone'      => fake()->phoneNumber(),
-                'address'    => fake()->address(),
-                'parrain_id' => fake()->randomElement($parrains),
-                'sold'       => fake()->numberBetween(500, 8000),
-                'last_sold'  => fake()->numberBetween(300, 7000),
-                'user_type'  => fake()->randomElement($userTypes),
-                'photo'      => null,
-                'role'       => fake()->randomElement($roles),
-                'email'      => fake()->unique()->safeEmail(),
-                'activate'   => fake()->boolean(90), // 90% activés
-                'email_verified_at' => now(),
-                'password'   => Hash::make('password'),
+        // ----- 5 Livreurs (Drivers) -----
+        for ($i = 1; $i <= 5; $i++) {
+            $user = User::create([
+                'name' => "Driver $i",
+                'email' => "driver$i@example.com",
+                'password' => Hash::make('password'),
+                'phone' => '69800000' . $i,
+                'user_type' => 'driver',
+            ]);
+
+            // Création du profil driver
+            Driver::create([
+                'user_id' => $user->id,
+                'vehicle_id' => null, // Peut être assigné après
+                'current_latitude' => null,
+                'current_longitude' => null,
+            ]);
+        }
+
+        // ----- 6 Merchants -----
+        for ($i = 1; $i <= 6; $i++) {
+            $user = User::create([
+                'name' => "Merchant $i",
+                'email' => "merchant$i@example.com",
+                'password' => Hash::make('password'),
+                'phone' => '69900000' . $i,
+                'user_type' => 'merchant',
+            ]);
+
+            // Création du profil merchant
+            Merchant::create([
+                'user_id' => $user->id,
             ]);
         }
     }

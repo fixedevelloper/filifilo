@@ -2,42 +2,57 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    const EN_ATTENTE='EN_ATTENTE';
-    const PREPARATION='PREPARATION';
-    const EN_LIVRAISON='EN_LIVRAISON';
+    const PENDING='pending';
+    const PREPARATION='preparation';
+    const IN_DELIVERY='in_delivery';
     const EN_COURS_LIVRAISON='EN_COURS_LIVRAISON';
-    const LIVREE='LIVREE';
-    const ANNULLEE='ANNULLEE';
+    const DELIVERY='delivered';
+    const CANCELLED='cancelled';
+
+    use HasFactory;
 
     protected $fillable = [
-        'total', 'type', 'quantity', 'total_ttc','shipping_address','shipping_longitude','shipping_latitude',
-        'status', 'store_id','reference','customer_id','transporter_id'
+        'customer_id','store_id','status','payment_status','reference','payment_method_id',
+        'total_amount','preparation_time','delivery_address_id','instructions'
     ];
-    protected $appends = ['time_ago'];
 
-    public function getTimeAgoAttribute()
+    public function customer()
     {
-        return $this->created_at?->diffForHumans() ?? 'Non défini';
-}
+        return $this->belongsTo(Customer::class);
+    }
 
     public function store()
     {
-        return $this->belongsTo(Store::class,'store_id','id');
+        return $this->belongsTo(Store::class);
     }
-    public function customer()
+
+    public function orderItems()
     {
-        return $this->belongsTo(User::class,'customer_id','id');
+        return $this->hasMany(OrderItem::class);
     }
-    public function transporter()
+
+    public function latestDelivery()
     {
-        return $this->belongsTo(User::class,'transporter_id','id');
+        return $this->hasOne(Delivery::class)->latestOfMany();
     }
-    public function lineItems()
+
+    public function deliveries()
     {
-        return $this->hasMany(LineItem::class);
+        return $this->hasMany(Delivery::class);
     }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+    public function deliveryAddress()
+    {
+        return $this->belongsTo(Address::class, 'delivery_address_id');
+    }
+
 }

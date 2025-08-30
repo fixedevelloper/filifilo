@@ -32,22 +32,5 @@ class CategorySeeder extends Seeder
                 'type' => $types[1],
             ]);
         }
-        $ingredients = [
-            'sel', 'poivre noir', 'huile d\'olive', 'oignon', 'ail',
-            'carotte', 'tomate', 'pomme de terre', 'riz', 'pâtes',
-            'farine', 'sucre', 'lait', 'œufs', 'beurre',
-            'poulet', 'bœuf', 'poisson', 'crevette', 'laitue',
-            'épinard', 'brocoli', 'champignon', 'poivron rouge', 'courgette',
-            'citron', 'citron vert', 'basilic', 'persil', 'coriandre',
-            'origan', 'thym', 'romarin', 'cumin', 'paprika',
-            'gingembre', 'curry', 'lait de coco', 'haricot noir', 'lentilles',
-            'fromage cheddar', 'mozzarella', 'parmesan', 'miel', 'sirop d\'érable',
-            'amandes', 'noix', 'chocolat noir', 'levure', 'vanille'
-        ];
-        for ($i = 0; $i < sizeof($ingredients); $i++) {
-            Ingredient::create([
-                'name' => ucfirst($ingredients[$i]),
-            ]);
-        }
     }
 }

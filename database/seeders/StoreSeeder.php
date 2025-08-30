@@ -15,7 +15,7 @@ class StoreSeeder extends Seeder
     {
         $types = ['SHOP', 'RESTAURANT'];
 
-        $vendors = \App\Models\User::pluck('id')->toArray(); // ou filtrer si besoin
+        $vendors = \App\Models\Merchant::pluck('id')->toArray(); // ou filtrer si besoin
         $cities = \App\Models\City::pluck('id')->toArray();
         $latlongS = [
             [4.0228757, 9.7197621],

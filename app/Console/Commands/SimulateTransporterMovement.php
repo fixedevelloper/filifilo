@@ -76,7 +76,7 @@ class SimulateTransporterMovement extends Command
 
         foreach ($positions as $pos) {
             broadcast(new TransporterPositionUpdated([
-                'transporterId'=>2,
+                'transporterId'=>1,
                 'lat'=>$pos[0],
                 'lng'=>$pos[1]]));
             $this->info("Position envoyée : {$pos[0]}, {$pos[1]}");

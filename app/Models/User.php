@@ -4,38 +4,42 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements JWTSubject
+
+class User extends Authenticatable
 {
     const TYPE_ADMIN     = 1;
     const TYPE_VENDOR     = 2;
     const TYPE_CUSTOMER     = 3;
     const TYPE_SHIPPING     = 4;
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable,HasApiTokens;
 
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'first_name',
-        'last_name',
-        'phone',
-        'email',
-        'user_type',
-        'password',
+        'name', 'email', 'password', 'phone', 'user_type', 'image_url'
     ];
-    public function vehicule()
+
+    public function merchant()
     {
-        return $this->hasOne(Vehicule::class, 'driver_id');
+        return $this->hasOne(Merchant::class);
     }
-    /**
+
+    public function customer()
+    {
+        return $this->hasOne(Customer::class);
+    }
+
+    public function driver()
+    {
+        return $this->hasOne(Driver::class);
+    }
+
+
+/**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>

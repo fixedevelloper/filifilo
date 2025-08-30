@@ -1,73 +1,103 @@
 <?php
 
-use App\Http\Controllers\API\AdminController;
-use App\Http\Controllers\API\AuthApiController;
-use App\Http\Controllers\API\ManagerController;
-use App\Http\Controllers\API\NotificationController;
-use App\Http\Controllers\API\OrderController;
-use App\Http\Controllers\API\StoreController;
-use App\Http\Controllers\API\TransporterController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\API\V2\Admin\AdminController;
+use App\Http\Controllers\API\V2\Admin\DashboardController;
+use App\Http\Controllers\API\V2\Auth\AuthController;
+use App\Http\Controllers\API\V2\Auth\PasswordController;
+use App\Http\Controllers\API\V2\Customer\CustomerController;
+use App\Http\Controllers\API\V2\Customer\AddressController;
+use App\Http\Controllers\API\V2\Customer\PaymentMethodController;
+use App\Http\Controllers\API\V2\Customer\OrderController as CustomerOrderController;
+use App\Http\Controllers\API\V2\Customer\RatingController;
+use App\Http\Controllers\API\V2\Merchant\MerchantController;
+use App\Http\Controllers\API\V2\Merchant\StoreController;
+use App\Http\Controllers\API\V2\Merchant\ProductController;
+use App\Http\Controllers\API\V2\Merchant\OrderController as MerchantOrderController;
+use App\Http\Controllers\API\V2\Driver\DriverController;
+use App\Http\Controllers\API\V2\Driver\VehicleController;
+use App\Http\Controllers\API\V2\Driver\DeliveryController;
+use App\Http\Controllers\API\V2\Common\NotificationController;
+use App\Http\Controllers\API\V2\Common\LoyaltyController;
+use App\Http\Controllers\API\V2\Common\CategoryController;
+use App\Http\Controllers\API\V2\Common\CityController;
+use App\Http\Controllers\API\V2\Common\CountryController;
 
-// routes/api.php
-Route::post('/broadcasting/auth', function () {
-    return response()->json(['auth' => true]);
+// ----------------- Auth -----------------
+Route::prefix('auth')->group(function () {
+    Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+    Route::post('password/request', [PasswordController::class, 'requestReset']);
+    Route::post('password/reset', [PasswordController::class, 'reset']);
+});
+Route::post('/driver/location', [DriverController::class, 'updatePosition']);
+// ----------------- Admin -----------------
+Route::prefix('admin')->middleware(['auth:sanctum','role:admin'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index']);
+    Route::get('drivers', [AdminController::class, 'drivers']);
+    Route::get('orders', [AdminController::class, 'orders']);
+    Route::get('users', [AdminController::class, 'users']);
 });
 
-Route::post('/broadcastin/auth', [AuthApiController::class, 'authenticateBroacast']);
-Route::post('login', [AuthApiController::class, 'login'])->name('login');
-Route::post('register', [AuthApiController::class, 'register']);
-Route::get('/send-notif', [NotificationController::class, 'send']);
-Route::post('/driver/location', [TransporterController::class, 'updateTransporterPosition']);
+// ----------------- Customer -----------------
+Route::prefix('customer')->middleware(['auth:sanctum','role:customer'])->group(function () {
+    Route::get('dashboard', [CustomerController::class, 'dashboard']);
+    Route::get('stores/{id}', [CustomerController::class, 'storeId']);
+    Route::get('stores', [CustomerController::class, 'storeByType']);
+    Route::get('products/{store_id}', [CustomerController::class, 'products']);
+    Route::get('search', [CustomerController::class, 'search']);
+    Route::get('profile', [CustomerController::class, 'profile']);
+    Route::put('profile', [CustomerController::class, 'updateProfile']);
+    Route::get('products/{id}/detail', [ProductController::class, 'show']);
+    Route::get('loyalty/coupons', [LoyaltyController::class, 'applyCoupon']);
 
-Route::middleware( ['jwt.verify'])->group(function () {
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/countries', [StoreController::class, 'countries']);
-    Route::get('/cities/{id}', [StoreController::class, 'cities']);
-    Route::get('/search', [StoreController::class, 'search']);
-    Route::get('/stores', [StoreController::class, 'stores']);
-    Route::get('/categories', [StoreController::class, 'categories']);
-    Route::get('/ingredients', [StoreController::class, 'ingredients']);
-    Route::get('/products/{store_id}', [StoreController::class, 'products']);
-    Route::get('/stores/{id}', [StoreController::class, 'getDeatailStore']);
-    Route::post('/orders', [OrderController::class, 'createOrder']);
-    Route::get('/orders', [OrderController::class, 'orders']);
-    Route::post('/vehicules', [TransporterController::class, 'createVehicule']);
-    Route::get('/orders/transporters', [TransporterController::class, 'orders']);
-    Route::get('/vehicules/me', [TransporterController::class, 'getMeVehicule']);
-    Route::get('/orders/transporters/my', [TransporterController::class, 'myOrders']);
-    Route::get('/orders/transporters/stats', [TransporterController::class, 'getOrderStats']);
-    Route::put('/drivers/order/{id}/status', [TransporterController::class, 'updateStatus']);
-    Route::get('/orders/{id}', [OrderController::class, 'orderByID']);
-    Route::get('/profile', [AuthApiController::class, 'profile']);
-    Route::post('/profile', [AuthApiController::class, 'updateProfile']);
-    Route::post('/change_password', [AuthApiController::class, 'changePassword']);
-
-    Route::put('vendors/updatestock/{id}', [ManagerController::class, 'updateStock']);
-    Route::post('vendors/product/{id}', [ManagerController::class, 'updateProduct']);
-    Route::get('vendors/homedata', [ManagerController::class, 'getOrderHome']);
-    Route::get('vendors/store', [ManagerController::class, 'getStore']);
-    Route::get('vendors/products', [ManagerController::class, 'products']);
-    Route::get('vendors/featured_products', [ManagerController::class, 'featured_products']);
-    Route::get('vendors/products/{id}', [ManagerController::class, 'productById']);
-    Route::get('vendors/orders', [ManagerController::class, 'orders']);
-    Route::post('vendors/products', [ManagerController::class, 'createProduct']);
-    Route::post('vendors/orders/status', [ManagerController::class, 'updateStatus']);
-    Route::get('vendors/orders/{id}', [OrderController::class, 'orderByID']);
-    Route::get('vendors/revenue-details', [ManagerController::class, 'revenueDetails']);
-    Route::get('vendors/chart-data', [ManagerController::class, 'getChartData']);
-
-    Route::post('admins/categories', [AdminController::class, 'createCategory']);
-    Route::get('admins/categories', [AdminController::class, 'categories']);
-    Route::post('admins/ingredients', [AdminController::class, 'createIngredient']);
-    Route::get('admins/ingredients', [AdminController::class, 'ingredients']);
-    Route::get('admins/stores', [AdminController::class, 'getStores']);
-    Route::get('admins/customers', [AdminController::class, 'getCustomers']);
-    Route::get('admins/drivers/online', [AdminController::class, 'driverByOnline']);
-    Route::get('admins/drivers', [AdminController::class, 'getDrivers']);
-    Route::get('admins/products', [AdminController::class, 'getProducts']);
-    Route::get('admins/drivers/info/{id}', [AdminController::class, 'getInfoDriver']);
-    Route::get('admins/orders', [AdminController::class, 'getOrders']);
+    Route::apiResource('addresses', AddressController::class);
+    Route::apiResource('payment-methods', PaymentMethodController::class);
+    Route::apiResource('orders', CustomerOrderController::class);
+    Route::post('orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
+    Route::apiResource('ratings', RatingController::class);
 });
 
+// ----------------- Merchant -----------------
+Route::prefix('merchant')->middleware(['auth:sanctum','role:merchant'])->group(function () {
+    Route::get('dashboard/orders/{id}', [MerchantController::class, 'getDashboard']);
+    Route::get('revenue-details/{id}', [MerchantController::class, 'revenueDetails']);
+    Route::get('chart-data/{id}', [MerchantController::class, 'getChartData']);
+    Route::get('profile', [MerchantController::class, 'profile']);
+    Route::put('profile', [MerchantController::class, 'updateProfile']);
+    Route::get('default-store', [StoreController::class, 'storeDefaut']);
+    Route::apiResource('stores', StoreController::class);
 
+    Route::get('products/{id}/index', [ProductController::class, 'index']);
+    Route::post('products/{id}', [ProductController::class, 'store']);
+    Route::apiResource('products', ProductController::class);
+    Route::get('featured_products/{id}', [ProductController::class, 'featured_products']);
+    Route::get('orders/{id}/index', [MerchantOrderController::class, 'index']);
+    Route::apiResource('orders', MerchantOrderController::class);
+    Route::post('orders/status', [MerchantOrderController::class, 'accept']);
+    Route::post('orders/{order}/reject', [MerchantOrderController::class, 'reject']);
+    Route::put('orders/{order}/preparation-time', [MerchantOrderController::class, 'updatePreparationTime']);
+});
+
+// ----------------- Driver -----------------
+Route::prefix('driver')->middleware(['auth:sanctum','role:driver'])->group(function () {
+    Route::get('profile', [DriverController::class, 'profile']);
+    Route::put('profile', [DriverController::class, 'updateProfile']);
+
+    Route::apiResource('vehicules', VehicleController::class);
+    Route::apiResource('deliveries', DeliveryController::class);
+    Route::post('deliveries/{delivery}/accept', [DeliveryController::class, 'accept']);
+    Route::put('deliveries/{delivery}/status', [DeliveryController::class, 'updateStatus']);
+});
+
+// ----------------- Common -----------------
+Route::prefix('common')->middleware('auth:sanctum')->group(function () {
+    Route::apiResource('notifications', NotificationController::class)->only(['index','show','store']);
+    Route::get('loyalty/points/{customer}', [LoyaltyController::class, 'points']);
+    Route::get('loyalty/coupons/{customer}', [LoyaltyController::class, 'coupons']);
+
+    Route::apiResource('categories', CategoryController::class);
+    Route::apiResource('countries', CountryController::class)->only(['index','store']);
+    Route::apiResource('cities', CityController::class)->only(['index','store']);
+});
