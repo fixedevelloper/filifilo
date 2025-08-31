@@ -114,7 +114,7 @@ class CustomerController extends Controller
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'description' => $product->description,
+                    'description' => $product->description==null?' ':$product->description,
                     'price' => $product->price,
                     'image_url' => $product->imageUrl,
                     'category_id' => $product->category_id,

@@ -82,7 +82,7 @@ class ProductController extends Controller
             $product = Product::create([
                 'name'        => $request->name,
                 'price'       => $request->price,
-                'details'     => $request->details,
+                'description'     => $request->details,
                 'store_id'    => $store->id,
                 'category_id' => $request->category_id,
                 'ingredients' => $ingredients,  // Store as JSON string

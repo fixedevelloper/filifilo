@@ -8,6 +8,7 @@ use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
+use App\Models\Delivery;
 use App\Models\Driver;
 use App\Models\Notification;
 use App\Models\Order;
@@ -77,6 +78,10 @@ class OrderController extends Controller
         ]);
         if ($request->status == Order::IN_DELIVERY) {
 
+            $delivery=Delivery::create([
+               'order_id'=>$order->id,
+            ]);
+
             $drivers = Driver::query()
                 ->whereDoesntHave('deliveries', function ($query) {
                     $query->where(['status'=>'assigned']);
@@ -128,8 +133,19 @@ class OrderController extends Controller
             'title'=>"Commande en {$order->status}",
         ]);
 
-        return Helpers::success($order, 'Produit créée avec succès');
+        return Helpers::success(new OrderResource($order), 'Produit créée avec succès');
     }
-    public function reject($id) {}
-    public function updatePreparationTime(Request $request, $id) {}
+    public function reject($id) {
+        $order=Order::query()->find($id);
+        $order->update([
+            'status'=>Order::CANCELLED
+        ]);
+        return Helpers::success(new OrderResource($order), 'Produit créée avec succès');
+    }
+    public function updatePreparationTime(Request $request, $id) {
+        $order=Order::query()->find($request->order_id);
+        $order->update([
+            'status'=>$request->status
+        ]);
+    }
 }

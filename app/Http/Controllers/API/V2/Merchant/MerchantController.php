@@ -66,7 +66,7 @@ class MerchantController extends Controller
         if ($filter === 'Jour') {
             $chartData = Order::select(
                 DB::raw("DATE_FORMAT(created_at, '%H:%i') as label"),
-                DB::raw("SUM(total) as value")
+                DB::raw("SUM(total_amount) as value")
             )
                 ->whereDate('created_at', Carbon::today())
                 ->groupBy('label')
@@ -75,7 +75,7 @@ class MerchantController extends Controller
 
             $transactions = Order::whereDate('created_at', Carbon::today())
                 ->orderByDesc('created_at')
-                ->get(['created_at', 'total'])
+                ->get(['created_at', 'total_amount'])
                 ->map(function($order) {
                     return [
                         'time' => $order->created_at->format('H:i'),
@@ -86,7 +86,7 @@ class MerchantController extends Controller
         } elseif ($filter === 'Semaine') {
             $chartData = Order::select(
                 DB::raw("DAYNAME(created_at) as label"),
-                DB::raw("SUM(total) as value")
+                DB::raw("SUM(total_amount) as value")
             )
                 ->whereBetween('created_at', [
                     Carbon::now()->startOfWeek(),
@@ -112,7 +112,7 @@ class MerchantController extends Controller
         } else { // Mois
             $chartData = Order::select(
                 DB::raw("DATE_FORMAT(created_at, '%b') as label"),
-                DB::raw("SUM(total) as value")
+                DB::raw("SUM(total_amount) as value")
             )
                 ->whereYear('created_at', Carbon::now()->year)
                 ->groupBy('label')
@@ -121,7 +121,7 @@ class MerchantController extends Controller
 
             $transactions = Order::whereYear('created_at', Carbon::now()->year)
                 ->orderByDesc('created_at')
-                ->get(['created_at', 'total'])
+                ->get(['created_at', 'total_amount'])
                 ->map(function($order) {
                     return [
                         'time' => $order->created_at->format('F'),
@@ -135,8 +135,46 @@ class MerchantController extends Controller
         ], 'Produit créée avec succès');
     }
 
-    public function profile() {}
-    public function updateProfile(Request $request) {}
+    public function profile() {
+        $user = Auth::user();
+
+        if (!$user) {
+            return Helpers::error('$customer est requis', 400);
+        }
+        return Helpers::success([
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'balance' => 0.0,
+            'date_birth' => date('Y-m-d')
+        ], 'Profile récupérés avec succès');
+    }
+    public function updateProfile(Request $request) {
+        $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|string',
+            'phone' => 'required|string',
+        ]);
+        $customer = $request->customer;
+
+        if (!$customer) {
+            return Helpers::error('$customer est requis', 400);
+        }
+        $customer->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+        ]);
+
+
+        return Helpers::success([
+            'name' => $customer->name,
+            'phone' => $customer->phone,
+            'email' => $customer->email,
+            'balance' => 0.0,
+            'date_birth' => date('Y-m-d')
+        ]);
+    }
     private function formatOrder(Order $order)
     {
         return [
