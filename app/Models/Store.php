@@ -11,7 +11,7 @@ class Store extends Model
 
     protected $fillable = [
         'merchant_id', 'name', 'store_type', 'city_id', 'country_id',
-        'latitude','longitude','status','image_url'
+        'latitude','longitude','status','image_url','time_open','time_close'
     ];
 
     public function merchant()

@@ -35,6 +35,54 @@ class Helper
     const OPERATIONDEPOSIT_CANCEL     = "DEPOSIT_CANCEL";
     const OPERATIONWITHDRAW_CANCEL     = "WITHDRAW_CANCEL";
     const per_page=10;
+
+    static function getDurationOSRM($originLat, $originLng, $destLat, $destLng) {
+        $url = "http://router.project-osrm.org/route/v1/driving/$originLng,$originLat;$destLng,$destLat?overview=false";
+
+        $response = file_get_contents($url);
+        $data = json_decode($response, true);
+
+        if (isset($data['routes'][0]['legs'][0]['duration'])) {
+            $durationInSeconds = $data['routes'][0]['legs'][0]['duration'];
+            // Convertir en heures et minutes
+            $hours = floor($durationInSeconds / 3600);
+            $minutes = floor(($durationInSeconds % 3600) / 60);
+            return "$hours hours $minutes minutes";
+        } else {
+            return 'Impossible de calculer la durée';
+        }
+    }
+
+
+    static function isStoreOpen($time_open, $time_close) {
+        // Obtenir l'heure actuelle
+        $currentTime = Carbon::now();
+
+        // Vérifier si l'heure d'ouverture est valide
+        if (is_null($time_open)) {
+            return false;
+        }
+
+        // Convertir les horaires d'ouverture et de fermeture en objets Carbon
+        $openTime = Carbon::createFromFormat('H:i:s', $time_open);
+        $closeTime = Carbon::createFromFormat('H:i:s', $time_close);
+
+        // Si l'heure de fermeture est avant l'heure d'ouverture, cela signifie que l'heure de fermeture est après minuit
+        if ($closeTime->lt($openTime)) {
+            // Le magasin est ouvert après minuit, donc nous devons vérifier deux conditions:
+            // - Soit l'heure actuelle est après l'heure d'ouverture mais avant minuit.
+            // - Soit l'heure actuelle est après minuit mais avant l'heure de fermeture du jour suivant.
+            if ($currentTime->gte($openTime) || $currentTime->lt($closeTime)) {
+                return true;
+            }
+            return false;
+        }
+
+        // Si l'heure de fermeture est après l'heure d'ouverture, vérifier normalement
+        return $currentTime->between($openTime, $closeTime);
+    }
+
+
     public static function  isValidUrl($url)
     {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {

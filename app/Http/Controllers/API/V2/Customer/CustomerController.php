@@ -64,6 +64,7 @@ class CustomerController extends Controller
                     'latitude' =>$store->latitude,
                     'longitude' =>$store->longitude,
                     'image_url' =>$store->image_url,
+                    'isOpen'=>Helper::isStoreOpen($store->time_open,$store->time_close),
                 ] ;
             });
 
@@ -81,6 +82,7 @@ class CustomerController extends Controller
             'latitude' =>$store->latitude,
             'longitude' =>$store->longitude,
             'image_url' =>$store->image_url,
+            'isOpen'=>Helper::isStoreOpen($store->time_open,$store->time_close),
         ], 'Produits récupérés avec succès');
     }
 
@@ -110,29 +112,27 @@ class CustomerController extends Controller
         $restaurants = Store::where('name', 'like', '%' . $search . '%')
             ->where('store_type', 'restaurant')
             ->orderBy('name', 'asc')->get()
-            ->map(function ($product) {
+            ->map(function ($store) {
                 return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'description' => $product->description==null?' ':$product->description,
-                    'price' => $product->price,
-                    'image_url' => $product->imageUrl,
-                    'category_id' => $product->category_id,
-                    'store_id' => $product->store_id,
-                    'store_name' => $product->store->name,
-                    'category_name' => $product->category->name,
+                    'id' => $store->id,
+                    'name' => $store->name,
+                    'latitude' => $store->latitude,
+                    'longitude' => $store->longitude,
+                    'image_url' => $store->image_url,
+                    'isOpen'=>Helper::isStoreOpen($store->time_open,$store->time_close),
                 ];
             });
         $shops = Store::where('name', 'like', '%' . $search . '%')
             ->orderBy('name', 'asc')->where('store_type', 'shop')
             ->get()
-            ->map(function ($product) {
+            ->map(function ($store) {
                 return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'latitude' => $product->latitude,
-                    'longitude' => $product->longitude,
-                    'image_url' => $product->image_url,
+                    'id' => $store->id,
+                    'name' => $store->name,
+                    'latitude' => $store->latitude,
+                    'longitude' => $store->longitude,
+                    'image_url' => $store->image_url,
+                    'isOpen'=>Helper::isStoreOpen($store->time_open,$store->time_close),
                 ];
             });
 

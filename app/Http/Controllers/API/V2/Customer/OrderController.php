@@ -91,9 +91,10 @@ class OrderController extends Controller
                 'payment_method_id' =>$request->payment_method_id,
                 'instructions' =>$request->note,
                 'payment_status' =>$request->payment_status,
-                'reference' => 'FF_' . Helper::generatenumber()
-            ]);
+                'reference' => 'FF_' . Helper::generatenumber(),
 
+            ]);
+$order->preparation_time=Helper::getDurationOSRM($order->store->latitude,$order->store->longitude,$order->deliveryAddress->latitude,$order->deliveryAddress->longitude);
             foreach ($items as $item) {
                 Log::debug('Création de line item', ['item' => $item]);
                 OrderItem::create([

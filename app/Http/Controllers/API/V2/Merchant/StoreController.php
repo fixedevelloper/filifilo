@@ -4,6 +4,7 @@
 namespace App\Http\Controllers\API\V2\Merchant;
 
 use App\Helpers\api\Helpers;
+use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Store;
 use App\Models\User;
@@ -24,7 +25,8 @@ class StoreController extends Controller
                 'type'=>null,
                 'latitude'=>null,
                 'longitude'=>null,
-                'address'=>null
+                'address'=>null,
+                'isOpen'=>false
             ]);
         }
         return Helpers::success( [
@@ -33,7 +35,8 @@ class StoreController extends Controller
             'type'=>$store->type,
             'latitude'=>$store->latitude,
             'longitude'=>$store->longitude,
-            'address'=>$store->address
+            'address'=>$store->address,
+            'isOpen'=>Helper::isStoreOpen($store->time_open,$store->time_close),
         ]);
     }
     public function index() {
@@ -56,6 +59,8 @@ class StoreController extends Controller
             'name' => 'required|string',
             'type' => 'required|string',
             'address' => 'nullable|string',
+            'time_close' => 'nullable|string',
+            'time_open' => 'nullable|string',
             'phone' => 'nullable|string|max:20',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
@@ -83,6 +88,8 @@ class StoreController extends Controller
             'latitude'=>$data['latitude'],
             'longitude'=>$data['longitude'],
             'name'=>$data['name'],
+            'time_close'=>$data['time_close'],
+            'time_open'=>$data['time_open'],
             'store_type'=>$data['type']=='Boutique'?'shop':$data['type'],
             'merchant_id'=>$user->merchant->id,
         ]);
