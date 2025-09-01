@@ -82,8 +82,8 @@ class DeliveryController extends Controller
         // Mise à jour du statut
         if ($request->status == 'assigned') {
             $delivery->update([
-                'driver_id' => $user->driver_id, // Assigner le driver
-                'status' => $request->status,   // Mettre à jour le statut
+                'status' => 'assigned',
+                'driver_id' => $user->driver->id,
             ]);
         } else {
             $delivery->update([
