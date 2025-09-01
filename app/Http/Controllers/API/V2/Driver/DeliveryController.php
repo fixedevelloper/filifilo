@@ -19,7 +19,6 @@ class DeliveryController extends Controller
         $user = Auth::user();
         $query = Delivery::query();
 
-        logger($user->driver->id);
         if ($request->status == 'current') {
             $query->where('status', 'current');
         } elseif ($request->status == 'accepted') {

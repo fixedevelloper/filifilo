@@ -3,14 +3,72 @@
 
 namespace App\Http\Controllers\API\V2\Driver;
 
+use App\Helpers\api\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DriverController extends Controller
 {
-    public function profile() {}
-    public function updateProfile(Request $request) {}
+    public function summary() {
+        $user = Auth::user();
+
+        if (!$user) {
+            return Helpers::error('driver est requis', 400);
+        }
+        $data=[
+            'total_order' => 0,
+            'order_complet' => 0,
+            'order_failed' => 0,
+            'order_income' => 0.0,
+           'rating'=>0,
+            'points'=>0,
+             'amount_collet'=>0.0,
+            'payment_collet'=>0.0
+        ];
+        return Helpers::success($data, 'Profile récupérés avec succès');
+    }
+    public function profile() {
+        $user = Auth::user();
+
+        if (!$user) {
+            return Helpers::error('driver est requis', 400);
+        }
+        return Helpers::success([
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'balance' => 0.0,
+            'date_birth' => date('Y-m-d')
+        ], 'Profile récupérés avec succès');
+    }
+    public function updateProfile(Request $request) {
+        $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|string',
+            'phone' => 'required|string',
+        ]);
+        $customer = $request->customer;
+
+        if (!$customer) {
+            return Helpers::error('$customer est requis', 400);
+        }
+        $customer->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+        ]);
+
+
+        return Helpers::success([
+            'name' => $customer->name,
+            'phone' => $customer->phone,
+            'email' => $customer->email,
+            'balance' => 0.0,
+            'date_birth' => date('Y-m-d')
+        ]);
+    }
     public function updatePosition(Request $request)
     {
         $driverId = $request->input('driver_id');
@@ -23,7 +81,7 @@ class DriverController extends Controller
             'current_longitude' => $lng,
         ]);
 
-        logger($device); // va logguer 1 si update ok, 0 sinon
+      //  logger($device); // va logguer 1 si update ok, 0 sinon
 
         return response()->json(['status' => 'ok']);
     }

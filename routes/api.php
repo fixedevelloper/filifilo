@@ -84,6 +84,7 @@ Route::prefix('merchant')->middleware(['auth:sanctum','role:merchant'])->group(f
 Route::prefix('driver')->middleware(['auth:sanctum','role:driver'])->group(function () {
     Route::get('profile', [DriverController::class, 'profile']);
     Route::put('profile', [DriverController::class, 'updateProfile']);
+    Route::get('summary', [DriverController::class, 'summary']);
 
     Route::apiResource('vehicules', VehicleController::class);
     Route::apiResource('deliveries', DeliveryController::class);
