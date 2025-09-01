@@ -58,18 +58,43 @@ class DeliveryController extends Controller
     {
         $user = Auth::user();
 
+        // Validation : s'assurer que le status est correct
         $request->validate([
-            'status' => 'required|in:assigned,in_delivered,delivered',
+            'status' => 'required|in:assigned,in_delivery,delivered', // Le statut doit correspondre aux valeurs possibles
         ]);
 
-        $delivery = Delivery::where('driver_id', $user->driver->id)->findOrFail($id);
+        // Chercher la livraison et vérifier les droits du driver
+        $delivery = Delivery::where('id', $id)
+            ->where(function($query) use ($user) {
+                // Si le statut est 'assigned', n'importe quel utilisateur avec un driver_id valide peut l'assigner
+                // Sinon, on vérifie que le driver associé à la livraison est bien celui de l'utilisateur connecté
+                if ($user->driver_id) {
+                    $query->where('driver_id', $user->driver_id);
+                }
+            })
+            ->first();
 
-        $delivery->update([
-            'status' => $request->status,
-        ]);
+        // Si la livraison n'est pas trouvée ou l'utilisateur n'a pas les droits, retourner une erreur
+        if (!$delivery) {
+            return response()->json(['error' => 'You do not have permission or this delivery does not exist.'], 403);
+        }
 
+        // Mise à jour du statut
+        if ($request->status == 'assigned') {
+            $delivery->update([
+                'driver_id' => $user->driver_id, // Assigner le driver
+                'status' => $request->status,   // Mettre à jour le statut
+            ]);
+        } else {
+            $delivery->update([
+                'status' => $request->status,   // Mettre à jour seulement le statut
+            ]);
+        }
+
+        // Retourner la réponse de succès
         return Helpers::success(new DeliveryResource($delivery));
     }
+
     public function show($id) {
         $order=Delivery::find($id);
         return Helpers::success(new DeliveryResource($order));
