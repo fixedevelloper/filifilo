@@ -98,7 +98,8 @@ class OrderController extends Controller
                 'reference' => 'FF_' . Helper::generatenumber(),
 
             ]);
-            $order->preparation_time = Helper::getDurationOSRM($order->store->latitude, $order->store->longitude, $order->deliveryAddress->latitude, $order->deliveryAddress->longitude);
+            $order->preparation_time = Helper::getDurationOSRM($order->store->latitude, $order->store->longitude, $order->deliveryAddress->latitude, $order->deliveryAddress->longitude)['minutes'];
+            $order->save();
             foreach ($items as $item) {
                 Log::debug('Création de line item', ['item' => $item]);
                 OrderItem::create([

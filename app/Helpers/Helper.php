@@ -47,7 +47,10 @@ class Helper
             // Convertir en heures et minutes
             $hours = floor($durationInSeconds / 3600);
             $minutes = floor(($durationInSeconds % 3600) / 60);
-            return "$hours hours $minutes minutes";
+            return [
+                'minutes'=>$durationInSeconds/60,
+                'message'=>"$hours hours $minutes minutes"
+            ];
         } else {
             return 'Impossible de calculer la durée';
         }

@@ -120,6 +120,10 @@ class DeliveryController extends Controller
     private function updateDeliveryStatus(Delivery $delivery, $status)
     {
         $delivery->update(['status' => $status]);
+        if (in_array($status,['in_delivery','delivered'])){
+            $delivery->order()->update(['status' => $status]);
+        }
+
     }
 
     /**

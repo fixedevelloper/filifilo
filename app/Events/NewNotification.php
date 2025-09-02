@@ -9,17 +9,18 @@ class NewNotification implements ShouldBroadcastNow
 {
     public $notification;
 
-    public function __construct(array $notification) { $this->notification = $notification; }
+    public function __construct($notification) { $this->notification = $notification; }
 
     public function broadcastOn() {
-        logger($this->notification['recipient_id']);
-        return new Channel("notifications.{$this->notification['recipient_id']}");
+        logger($this->notification->recipient_id);
+        return new Channel("notifications.{$this->notification->recipient_id}");
     }
 
     public function broadcastAs() { return 'NewNotification'; }
 
     public function broadcastWith() {
-        return $this->notification;
+        // Convertir l'objet Notification en un tableau
+        return $this->notification->toArray(); // S'assurer que la méthode toArray() existe
     }
 }
 

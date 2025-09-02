@@ -24,4 +24,18 @@ class Notification extends Model
     {
         return $this->created_at->diffForHumans();
     }
+    // Ajoutez la méthode toArray() si elle n'existe pas
+    public function toArray()
+    {
+        return [
+            'id' => $this->id,
+            'order_id' => $this->order_id,
+            'recipient_type' => $this->recipient_type,
+            'title' => $this->title,
+            'recipient_id' => $this->recipient_id,
+            'status' => $this->status,
+            'message' => $this->message,
+            // Inclure d'autres champs ici selon vos besoins
+        ];
+    }
 }
