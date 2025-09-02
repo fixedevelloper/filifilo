@@ -29,13 +29,8 @@ class AuthController extends Controller
                 'email'       => 'required|email|unique:users,email',
                 'password'    => 'required|string|min:6',
                 'phone'    => 'required|string|min:6',
+                'device_id'    => 'nullable|string',
                 'user_type'   => 'nullable|in:customer,admin,merchant,driver',
-/*                'address'     => 'required_if:user_type,customer|string|max:255',
-                'address_line'=> 'required_if:user_type,customer|string|max:255',
-                'latitude'    => 'required_if:user_type,customer|numeric',
-                'longitude'   => 'required_if:user_type,customer|numeric',*/
-                //'city_id'     => 'required_if:user_type,customer|exists:cities,id',
-                //'country_id'  => 'required_if:user_type,customer|exists:countries,id',
             ]);
 
             // ✅ Transaction
@@ -85,17 +80,15 @@ class AuthController extends Controller
                 ]);
             });
         } catch (ValidationException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], 422);
+            return Helpers::error($e->getMessage(), [
+                'code'=>404,
+                'details'=>''
+            ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Registration failed',
-                'error' => $e->getMessage(),
-            ], 500);
+            return Helpers::error($e->getMessage(), [
+                'code'=>500,
+                'details'=>''
+            ]);
         }
     }
 
@@ -110,7 +103,7 @@ class AuthController extends Controller
         $user = User::where('phone', $request->phone)->first();
 
         if(!$user || !Hash::check($request->password, $user->password)){
-            return Helpers::unauthorized('Invalid credentials');
+            return Helpers::error('Invalid credentials','Invalid credentials');
         }
 
        if ($request->has('user_type') && $request->user_type=='driver'){

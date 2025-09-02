@@ -61,6 +61,10 @@ class VehicleController extends Controller
                 ]
             );
 
+            $driver=Auth::user()->driver;
+            $driver->update([
+               'vehicle_id'=>$vehicule->id
+            ]);
 
             DB::commit();
 
@@ -74,6 +78,14 @@ class VehicleController extends Controller
             ]);
             return Helpers::error('Une erreur est survenue lors de la création du véhicule');
         }
+    }
+    public function selectedVehicule(Request $request, $id) {
+        $driver=Auth::user()->driver;
+        logger($driver);
+        $driver->update([
+            'vehicle_id'=>$id
+        ]);
+        return Helpers::success($driver, 'Véhicule assigne avec succès ✅');
     }
     public function update(Request $request, $id) {}
     public function destroy($id) {}

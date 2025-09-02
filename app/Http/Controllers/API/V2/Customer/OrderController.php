@@ -3,6 +3,7 @@
 
 namespace App\Http\Controllers\API\V2\Customer;
 
+use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
@@ -20,27 +21,28 @@ use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
-    public function index() {
+    public function index()
+    {
         $user = Auth::user();
 
         $orders = Order::where('customer_id', $user->customer->id)->orderByDesc("created_at")->get()->map(function ($order) {
-            $lines=OrderItem::where('order_id',$order->id)->get()->map(function ($line){
+            $lines = OrderItem::where('order_id', $order->id)->get()->map(function ($line) {
                 return [
-                    'id'          => $line->id,
-                    'name'          => $line->product_name,
-                    'quantity'          => $line->quantity,
-                    'price'          => $line->unit_price,
-                    'total_price'          => $line->total_price,
+                    'id' => $line->id,
+                    'name' => $line->product_name,
+                    'quantity' => $line->quantity,
+                    'price' => $line->unit_price,
+                    'total_price' => $line->total_price,
                 ];
             });
             return [
-                'id'          => $order->id,
-                'reference'        => $order->reference,
-                'quantity'       => $order->quantity,
-                'status'   => $order->status,
+                'id' => $order->id,
+                'reference' => $order->reference,
+                'quantity' => $order->quantity,
+                'status' => $order->status,
                 'total_ttc' => $order->total_amount,
                 'total' => $order->total_amount,
-                'items'=>$lines,
+                'items' => $lines,
                 'store_name' => $order->store->name,
                 'date' => $order->created_at->toDateTimeString(),
             ];
@@ -48,9 +50,11 @@ class OrderController extends Controller
 
         return Helpers::success($orders, 'Commandes récupérés avec succès');
     }
-    public function store(Request $request) {
+
+    public function store(Request $request)
+    {
         $user = Auth::user();
-        $validator=   Validator::make($request->all(),[
+        $validator = Validator::make($request->all(), [
             'store_id' => 'required|exists:stores,id',
             'delivery_address_id' => 'required|exists:addresses,id',
             'items' => 'required|array|min:1',
@@ -87,20 +91,20 @@ class OrderController extends Controller
                 'status' => Order::PENDING,
                 'store_id' => $request->store_id,
                 'customer_id' => $user->customer->id,
-                'delivery_address_id' =>$request->delivery_address_id,
-                'payment_method_id' =>$request->payment_method_id,
-                'instructions' =>$request->note,
-                'payment_status' =>$request->payment_status,
+                'delivery_address_id' => $request->delivery_address_id,
+                'payment_method_id' => $request->payment_method_id,
+                'instructions' => $request->note,
+                'payment_status' => $request->payment_status,
                 'reference' => 'FF_' . Helper::generatenumber(),
 
             ]);
-$order->preparation_time=Helper::getDurationOSRM($order->store->latitude,$order->store->longitude,$order->deliveryAddress->latitude,$order->deliveryAddress->longitude);
+            $order->preparation_time = Helper::getDurationOSRM($order->store->latitude, $order->store->longitude, $order->deliveryAddress->latitude, $order->deliveryAddress->longitude);
             foreach ($items as $item) {
                 Log::debug('Création de line item', ['item' => $item]);
                 OrderItem::create([
-                    'addons'=>json_encode($item['addons']),
-                    'instructions'=>$item['instructions'],
-                    'product_virtual' => $item['product_virtual']??false,
+                    'addons' => json_encode($item['addons']),
+                    'instructions' => $item['instructions'],
+                    'product_virtual' => $item['product_virtual'] ?? false,
                     'product_name' => $item['name'],
                     'quantity' => $item['quantity'],
                     'total_price' => $item['total'],
@@ -110,28 +114,22 @@ $order->preparation_time=Helper::getDurationOSRM($order->store->latitude,$order-
             }
 
 
-            $notification=Notification::create([
-                'order_id'=>$order->id,
+            $notification = Notification::create([
+                'order_id' => $order->id,
                 'recipient_id' => $order->store->merchant_id,
                 "recipient_type" => 'merchant',
                 "message" => "Placed a new order",
-                'title'=>'Placed a new order',
+                'title' => 'Placed a new order',
             ]);
-            $notification_admin=Notification::create([
-                'order_id'=>$order->id,
+            $notification_admin = Notification::create([
+                'order_id' => $order->id,
                 'recipient_id' => 1,
                 "recipient_type" => 'admin',
                 "message" => "Placed a new order",
-                'title'=>'Placed a new order',
+                'title' => 'Placed a new order',
             ]);
-            /*         broadcast(new NewNotification([
-                         'user_id' => $order->id,
-                         "username" => $order->store->vendor->first_name,
-                         "profile_image" => $order->store->vendor->first_name,
-                         "action_text" => "Placed a new order",
-                         "time" => $order->time_ago,
-                         "thumbnail_url" => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-                     ]));*/
+                     broadcast(new NewNotification($notification_admin));
+            broadcast(new NewNotification($notification));
             DB::commit();
 
             return Helpers::success([
@@ -139,8 +137,7 @@ $order->preparation_time=Helper::getDurationOSRM($order->store->latitude,$order-
                 'id' => $order->id,
             ], 'Commande créée avec succès');
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la création de la commande', [
                 'message' => $e->getMessage(),
@@ -149,9 +146,11 @@ $order->preparation_time=Helper::getDurationOSRM($order->store->latitude,$order-
             return Helpers::error('Une erreur est survenue lors de la création de la commande.');
         }
     }
-    public function show($id) {
 
-        $order = Order::with(['store', 'orderItems','customer','deliveryAddress','latestDelivery'])->find($id);
+    public function show($id)
+    {
+
+        $order = Order::with(['store', 'orderItems', 'customer', 'deliveryAddress', 'latestDelivery'])->find($id);
 
         if (!$order) {
             return Helpers::error('Commande non trouvée');
@@ -160,7 +159,9 @@ $order->preparation_time=Helper::getDurationOSRM($order->store->latitude,$order-
         logger($order);
         return Helpers::success(new OrderResource($order), 'Commande récupérée avec succès');
     }
-    public function cancel($id) {
+
+    public function cancel($id)
+    {
 
     }
 

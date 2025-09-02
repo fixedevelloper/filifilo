@@ -35,7 +35,9 @@ class Handler extends ExceptionHandler
         if ($e->getStatusCode() === 404) {
             $response['message'] = 'La ressource demandée n\'a pas été trouvée.';
         }
-
+   /*     if ($e->getStatusCode() === 500) {
+            $response['message'] = $e->getMessage();
+        }*/
         return response()->json($response, $e->getStatusCode() ?: 500);
     }
 }

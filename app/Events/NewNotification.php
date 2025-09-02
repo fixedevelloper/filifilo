@@ -12,8 +12,8 @@ class NewNotification implements ShouldBroadcastNow
     public function __construct(array $notification) { $this->notification = $notification; }
 
     public function broadcastOn() {
-        logger($this->notification['user_id']);
-        return new Channel("notifications.{$this->notification['user_id']}");
+        logger($this->notification['recipient_id']);
+        return new Channel("notifications.{$this->notification['recipient_id']}");
     }
 
     public function broadcastAs() { return 'NewNotification'; }

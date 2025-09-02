@@ -3,8 +3,10 @@
 
 namespace App\Http\Controllers\API\V2\Driver;
 
+use App\Events\TransporterPositionUpdated;
 use App\Helpers\api\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\Delivery;
 use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +51,7 @@ class DriverController extends Controller
             'email' => 'required|string',
             'phone' => 'required|string',
         ]);
-        $customer = $request->customer;
+        $customer = Auth::user();
 
         if (!$customer) {
             return Helpers::error('$customer est requis', 400);
@@ -80,10 +82,17 @@ class DriverController extends Controller
             'current_latitude'  => $lat,
             'current_longitude' => $lng,
         ]);
-
-      //  logger($device); // va logguer 1 si update ok, 0 sinon
+        $this->getLastCourseByDriver($pos->id,$lat,$lng);
 
         return response()->json(['status' => 'ok']);
     }
+    private function getLastCourseByDriver($driverId,$lat,$lng){
+        $deliveries=Delivery::query()->where(['driver_id'=>$driverId,'status'=>'in_delivery'])->latest()->get();
+        foreach ($deliveries as $delivery){
 
+            event(new TransporterPositionUpdated([ 'transporterId'=>$delivery->order_id,
+                'lat'=>$lat,
+                'lng'=>$lng]));
+        }
+    }
 }

@@ -4,10 +4,12 @@
 namespace App\Http\Controllers\API\V2\Driver;
 
 
+use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DeliveryResource;
 use App\Models\Delivery;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use function Carbon\ne;
@@ -58,45 +60,115 @@ class DeliveryController extends Controller
     {
         $user = Auth::user();
 
-        // Validation : s'assurer que le status est correct
+        // Validation : s'assurer que le statut est correct
         $request->validate([
-            'status' => 'required|in:assigned,in_delivery,delivered', // Le statut doit correspondre aux valeurs possibles
+            'status' => 'required|in:assigned,in_delivery,delivered',
         ]);
 
         // Chercher la livraison et vérifier les droits du driver
-        $delivery = Delivery::where('id', $id)
-            ->where(function($query) use ($user) {
-                // Si le statut est 'assigned', n'importe quel utilisateur avec un driver_id valide peut l'assigner
-                // Sinon, on vérifie que le driver associé à la livraison est bien celui de l'utilisateur connecté
+        $delivery = $this->findDeliveryForUser($id, $user);
+
+        if (!$delivery) {
+            return response()->json(['error' => 'Vous n\'avez pas la permission ou cette livraison n\'existe pas.'], 403);
+        }
+
+        // Traiter le changement de statut
+        $status = $request->status;
+        $this->handleStatusChange($delivery, $status, $user);
+
+        // Retourner une réponse de succès
+        return Helpers::success(new DeliveryResource($delivery));
+    }
+
+    /**
+     * Trouver la livraison en fonction de l'utilisateur et de l'ID de la livraison.
+     */
+    private function findDeliveryForUser($id, $user)
+    {
+        return Delivery::where('id', $id)
+            ->where(function ($query) use ($user) {
                 if ($user->driver_id) {
                     $query->where('driver_id', $user->driver_id);
                 }
             })
             ->first();
-
-        // Si la livraison n'est pas trouvée ou l'utilisateur n'a pas les droits, retourner une erreur
-        if (!$delivery) {
-            return response()->json(['error' => 'You do not have permission or this delivery does not exist.'], 403);
-        }
-
-        // Mise à jour du statut
-        if ($request->status == 'assigned') {
-            $delivery->update([
-                'status' => 'assigned',
-                'driver_id' => $user->driver->id,
-            ]);
-        } else {
-            $delivery->update([
-                'status' => $request->status,   // Mettre à jour seulement le statut
-            ]);
-        }
-
-        // Retourner la réponse de succès
-        return Helpers::success(new DeliveryResource($delivery));
     }
 
-    public function show($id) {
-        $order=Delivery::find($id);
+    /**
+     * Traiter le changement de statut.
+     */
+    private function handleStatusChange(Delivery $delivery, $status, $user)
+    {
+        switch ($status) {
+            case 'assigned':
+                $this->assignDelivery($delivery, $user);
+                break;
+            case 'in_delivery':
+                $this->updateDeliveryStatus($delivery, 'in_delivery');
+                $this->sendNotification($delivery, "La commande N° {$delivery->order->id} est en cours de livraison", 'Commande en cours de livraison');
+                break;
+            case 'delivered':
+                $this->updateDeliveryStatus($delivery, 'delivered');
+                $this->sendNotification($delivery, "La commande N° {$delivery->order->id} a été livrée avec succès", 'Commande livrée avec succès');
+                break;
+        }
+    }
+
+    /**
+     * Mettre à jour le statut de la livraison.
+     */
+    private function updateDeliveryStatus(Delivery $delivery, $status)
+    {
+        $delivery->update(['status' => $status]);
+    }
+
+    /**
+     * Assigner la livraison à un chauffeur.
+     */
+    private function assignDelivery(Delivery $delivery, $user)
+    {
+        $delivery->update([
+            'status' => 'assigned',
+            'driver_id' => $user->driver->id,
+        ]);
+
+        // Envoi des notifications pour l'assignation
+        $this->sendNotification($delivery, "La commande N° {$delivery->order->id} a été assignée avec succès au transporteur {$delivery->driver->user->name}", 'Assignation de commande');
+    }
+
+    /**
+     * Envoyer les notifications au marchand, au client et à l\'admin.
+     */
+    private function sendNotification(Delivery $delivery, $message, $title)
+    {
+        $merchantNotification = $this->createNotification($delivery, $delivery->order->store->merchant_id, 'merchant', $message, $title);
+        $customerNotification = $this->createNotification($delivery, $delivery->order->customer->id, 'customer', $message, $title);
+        $adminNotification = $this->createNotification($delivery, 1, 'merchant', $message, $title);
+
+        // Diffusion des notifications
+        broadcast(new NewNotification($merchantNotification));
+        broadcast(new NewNotification($customerNotification));
+        broadcast(new NewNotification($adminNotification));
+    }
+
+    /**
+     * Créer une nouvelle notification.
+     */
+    private function createNotification(Delivery $delivery, $recipientId, $recipientType, $message, $title)
+    {
+        return Notification::create([
+            'order_id' => $delivery->order->id,
+            'recipient_id' => $recipientId,
+            'recipient_type' => $recipientType,
+            'message' => $message,
+            'title' => $title,
+        ]);
+    }
+
+
+    public function show($id)
+    {
+        $order = Delivery::find($id);
         return Helpers::success(new DeliveryResource($order));
     }
 }

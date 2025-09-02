@@ -87,6 +87,7 @@ Route::prefix('driver')->middleware(['auth:sanctum','role:driver'])->group(funct
     Route::get('summary', [DriverController::class, 'summary']);
 
     Route::apiResource('vehicules', VehicleController::class);
+    Route::get('selected/{id}', [VehicleController::class, 'selectedVehicule']);
     Route::apiResource('deliveries', DeliveryController::class);
     Route::post('deliveries/{delivery}/accept', [DeliveryController::class, 'accept']);
     Route::put('deliveries/{delivery}/status', [DeliveryController::class, 'updateStatus']);

@@ -21,7 +21,7 @@ class TransporterPositionUpdated implements ShouldBroadcastNow
     public function __construct(array $notification) { $this->notification = $notification; }
     public function broadcastOn()
     {
-        logger('init brocast'. $this->notification['transporterId']);
+       // logger('init brocast'. $this->notification['transporterId']);
         return new Channel('transporter.' .  $this->notification['transporterId']);
     }
 
