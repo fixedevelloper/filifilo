@@ -38,17 +38,17 @@ class LoyaltyController extends Controller
         $coupon = Coupon::where(['code'=>$request->code,'customer_id'=>$user->customer->id])->first();
 
         if (!$coupon || !$coupon->status=='active') {
-            return response()->json(['error' => 'Coupon invalide'], 400);
+            return Helpers::error( 'Coupon invalide', 400);
         }
 
         $orderAmount = $request->order_amount;
 
         if ($orderAmount < $coupon->min_order_amount) {
-            return response()->json(['error' => 'Montant minimum non atteint'], 400);
+            return Helpers::error( 'Montant minimum non atteint', 400);
         }
 
         if ( now()->gt($coupon->expiry_date)) {
-            return response()->json(['error' => 'Coupon expiré'], 400);
+            return Helpers::error('Coupon expiré', 400);
         }
 
         // Calcul remise
@@ -56,7 +56,7 @@ class LoyaltyController extends Controller
             ? min($orderAmount * $coupon->value / 100, $coupon->max_discount ?? INF)
             : $coupon->value;
 
-        return response()->json([
+        return Helpers::success([
             'success' => true,
             'discount' => $discount,
             'final_amount' => $orderAmount - $discount

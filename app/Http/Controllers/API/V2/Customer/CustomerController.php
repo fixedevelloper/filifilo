@@ -171,7 +171,7 @@ class CustomerController extends Controller
             'email' => 'required|string',
             'phone' => 'required|string',
         ]);
-        $customer = $request->customer;
+        $customer = Auth::user();
 
         if (!$customer) {
             return Helpers::error('$customer est requis', 400);
@@ -190,5 +190,19 @@ class CustomerController extends Controller
             'balance' => 0.0,
             'date_birth' => date('Y-m-d')
         ]);
+    }
+    public function sendCodeVerifyPhone(Request $request) {
+        $request->validate([
+            'phone' => 'required|string',
+        ]);
+        $customer = Auth::user();
+
+        if (!$customer) {
+            return Helpers::error('$customer est requis', 400);
+        }
+
+
+
+        return Helpers::success();
     }
 }

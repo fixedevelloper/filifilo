@@ -30,6 +30,9 @@ Route::prefix('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::post('password/request', [PasswordController::class, 'requestReset']);
     Route::post('password/reset', [PasswordController::class, 'reset']);
+    Route::post('change_password', [PasswordController::class, 'changePassword']);
+    Route::post('phone/send_code', [PasswordController::class, 'sendCodeVerify']);
+    Route::post('phone/verify', [PasswordController::class, 'verifyCode']);
 });
 Route::post('/driver/location', [DriverController::class, 'updatePosition']);
 // ----------------- Admin -----------------

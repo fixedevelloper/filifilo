@@ -30,6 +30,7 @@ class AuthController extends Controller
                 'password'    => 'required|string|min:6',
                 'phone'    => 'required|string|min:6',
                 'device_id'    => 'nullable|string',
+                'token_verify'    => 'nullable|string',
                 'user_type'   => 'nullable|in:customer,admin,merchant,driver',
             ]);
 
@@ -52,7 +53,9 @@ class AuthController extends Controller
                         'user_id' => $user->id,
                     ]);
                    // $geoData = GeoHelper::getAddressFromCoordinates($validated['latitude'], $validated['longitude']);
-
+                    if (!$this->verifyToken($validated['token_verify'])){
+                        return Helpers::error('le code Invalide');
+                    }
                     return Helpers::success([
                         'user_id'      => $user->id,
                         'access_token' => $token,
@@ -124,5 +127,8 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message'=>'Logged out']);
+    }
+    private function verifyToken($token){
+        return true;
     }
 }

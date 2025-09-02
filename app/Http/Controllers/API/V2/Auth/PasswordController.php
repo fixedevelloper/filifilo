@@ -103,4 +103,42 @@ class PasswordController extends Controller
             'date_birth' => date('Y-m-d')
         ]);
     }
+    public function sendCodeVerify(Request $request)
+    {
+
+        $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        return Helpers::success('verify ok');
+    }
+    public function verifyCode(Request $request)
+    {
+
+        $request->validate([
+            'new_password' => 'required|string',
+            'password' => 'required|string',
+        ]);
+        $user = Auth::user();
+
+        if (!$user) {
+            return Helpers::error('$customer est requis', 400);
+        }
+        if (!Auth::attempt(['phone' => $user->phone, 'password' => $request->password])) {
+            return Helpers::error('Invalid credentials');
+
+        }
+        $user->update([
+            'password' => Hash::make($request->new_password)
+
+        ]);
+
+        return Helpers::success([
+            'first_name' => $user->name,
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'balance' => 0.0,
+            'date_birth' => date('Y-m-d')
+        ]);
+    }
 }
