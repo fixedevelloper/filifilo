@@ -6,11 +6,14 @@ namespace App\Http\Controllers\API\V2\Auth;
 
 use App\Helpers\api\Helpers;
 use App\Helpers\GeoHelper;
+use App\Helpers\WhatsappService;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Country;
 use App\Models\Customer;
 use App\Models\Driver;
 use App\Models\Merchant;
+use App\Models\PhoneVerification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,23 +23,36 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
 
+    private  $whatsappService;
+
+    /**
+     * PasswordController constructor.
+     * @param $whatsappService
+     */
+    public function __construct(WhatsappService $whatsappService)
+    {
+        $this->whatsappService = $whatsappService;
+    }
+
     public function register(Request $request)
     {
         try {
-            // ✅ Validation
+            // ✅ Validation des entrées
             $validated = $request->validate([
                 'name'        => 'required|string|max:255',
                 'email'       => 'required|email|unique:users,email',
                 'password'    => 'required|string|min:6',
-                'phone'    => 'required|string|min:6',
-                'device_id'    => 'nullable|string',
-                'token_verify'    => 'nullable|string',
+                'phone'       => 'required|string|min:6|unique:users,phone',
+                'device_id'   => 'nullable|string',
+                'token_verify'=> 'nullable|string', // reçu depuis WhatsApp/SMS
                 'user_type'   => 'nullable|in:customer,admin,merchant,driver',
             ]);
 
-            // ✅ Transaction
+            // ✅ Transaction DB (rollback si problème)
             return DB::transaction(function () use ($validated) {
-                // Création utilisateur
+
+
+                // ✅ Création de l’utilisateur
                 $user = User::create([
                     'name'      => $validated['name'],
                     'email'     => $validated['email'],
@@ -47,53 +63,48 @@ class AuthController extends Controller
 
                 $token = $user->createToken('auth_token')->plainTextToken;
 
-                // Si c'est un customer -> on crée son profil et son adresse
-                if ($user->user_type === 'customer') {
-                    $customer = Customer::create([
-                        'user_id' => $user->id,
-                    ]);
-                   // $geoData = GeoHelper::getAddressFromCoordinates($validated['latitude'], $validated['longitude']);
-                    if (!$this->verifyToken($validated['token_verify'])){
-                        return Helpers::error('le code Invalide');
-                    }
-                    return Helpers::success([
-                        'user_id'      => $user->id,
-                        'access_token' => $token,
-                        'token_type'   => 'Bearer',
-                    ]);
+                // ✅ Création du profil en fonction du type
+                switch ($user->user_type) {
+                    case 'customer':
+                        Customer::create([
+                            'user_id' => $user->id,
+                        ]);
+                        break;
+
+                    case 'merchant':
+                        Merchant::create([
+                            'user_id' => $user->id,
+                        ]);
+                        break;
+
+                    case 'driver':
+                        Driver::create([
+                            'user_id'   => $user->id,
+                            'device_id' => $validated['device_id'] ?? null,
+                        ]);
+                        break;
                 }
 
-                if ($user->user_type === 'merchant') {
-                    $merchant = Merchant::create([
-                        'user_id' => $user->id,
-                    ]);
-                }
-                if ($user->user_type === 'driver') {
-                    $driver = Driver::create([
-                        'user_id' => $user->id,
-                        'device_id' => $validated['device_id']
-                    ]);
-
-                }
-                // Autres types d’utilisateurs
+                // ✅ Réponse succès
                 return Helpers::success([
-                    'user_id'        => $user->id,
-                    'access_token'=> $token,
-                    'token_type'  => 'Bearer',
+                    'user_id'      => $user->id,
+                    'access_token' => $token,
+                    'token_type'   => 'Bearer',
                 ]);
             });
         } catch (ValidationException $e) {
             return Helpers::error($e->getMessage(), [
-                'code'=>404,
-                'details'=>''
+                'code' => 422,
+                'details' => $e->errors(),
             ]);
         } catch (\Exception $e) {
             return Helpers::error($e->getMessage(), [
-                'code'=>500,
-                'details'=>''
+                'code' => 500,
+                'details' => $e->getTraceAsString(),
             ]);
         }
     }
+
 
 
     public function login(Request $request)
@@ -128,7 +139,37 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message'=>'Logged out']);
     }
-    private function verifyToken($token){
-        return true;
+    private function verifyToken($phone_number,$otp_code){
+
+
+        $verification = PhoneVerification::where('phone_number', $phone_number)
+            ->where('otp_code', $otp_code)
+            ->first();
+
+        if (!$verification) {
+            return [
+                'message'=>'Code incorrect',
+                'status'=>false
+            ];
+        }
+
+        if (now()->greaterThan($verification->expires_at)) {
+            return [
+                'message'=>'Code expiré',
+                'status'=>false
+            ];
+        }
+
+        $verification->update(['verified' => true]);
+
+         return [
+            'message'=>'Téléphone vérifié avec succès',
+            'status'=>true
+        ];
+    }
+
+    public function getCountries(Request $request){
+        $countries=Country::all();
+        return Helpers::success($countries);
     }
 }

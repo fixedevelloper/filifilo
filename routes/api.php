@@ -33,7 +33,9 @@ Route::prefix('auth')->group(function () {
     Route::post('change_password', [PasswordController::class, 'changePassword']);
     Route::post('phone/send_code', [PasswordController::class, 'sendCodeVerify']);
     Route::post('phone/verify', [PasswordController::class, 'verifyCode']);
+    Route::get('countries', [AuthController::class, 'getCountries']);
 });
+
 Route::post('/driver/location', [DriverController::class, 'updatePosition']);
 // ----------------- Admin -----------------
 Route::prefix('admin')->middleware(['auth:sanctum','role:admin'])->group(function () {

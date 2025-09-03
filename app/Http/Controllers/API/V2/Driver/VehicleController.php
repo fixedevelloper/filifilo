@@ -17,11 +17,12 @@ class VehicleController extends Controller
 {
     public function index() {
         $user = Auth::user();
+        $me=$user->driver->vehicle;
         $vehicules = Vehicle::query()
             ->whereDoesntHave('drivers')
             ->latest()
             ->get();
-        return Helpers::success($vehicules);
+        return Helpers::success($vehicules->add($me));
     }
     public function store(Request $request) {
 

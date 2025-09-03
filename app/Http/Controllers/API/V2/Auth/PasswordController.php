@@ -4,17 +4,31 @@
 namespace App\Http\Controllers\API\V2\Auth;
 
 use App\Helpers\api\Helpers;
+use App\Helpers\WhatsappService;
 use App\Http\Controllers\Controller;
+use App\Models\PhoneVerification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
 class PasswordController extends Controller
 {
+    private  $whatsappService;
+
+    /**
+     * PasswordController constructor.
+     * @param $whatsappService
+     */
+    public function __construct(WhatsappService $whatsappService)
+    {
+        $this->whatsappService = $whatsappService;
+    }
+
     public function requestReset(Request $request) {
 
         $request->validate([
@@ -107,38 +121,48 @@ class PasswordController extends Controller
     {
 
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => 'required|string'
         ]);
 
-        return Helpers::success('verify ok');
+        $otp = rand(1000, 9999); // Code à 4 chiffres
+        $expiresAt = now()->addMinutes(5); // expire après 5 minutes
+
+        // Sauvegarde en base
+        PhoneVerification::updateOrCreate(
+            ['phone_number' => $request->phone],
+            ['otp_code' => $otp, 'expires_at' => $expiresAt, 'verified' => false]
+        );
+
+     $response= $this->whatsappService->sendVerificationTemplate($request->phone,$otp);
+
+        if ($response->failed()) {
+            return Helpers::error('Échec de l’envoi du WhatsApp', 500);
+        }
+        return Helpers::success('OTP envoyé via WhatsApp');
     }
     public function verifyCode(Request $request)
     {
-
         $request->validate([
-            'new_password' => 'required|string',
-            'password' => 'required|string',
+            'phone_number' => 'required|string',
+            'otp_code' => 'required|string'
         ]);
-        $user = Auth::user();
 
-        if (!$user) {
-            return Helpers::error('$customer est requis', 400);
+        $verification = PhoneVerification::where('phone_number', $request->phone_number)
+            ->where('otp_code', $request->otp_code)
+            ->first();
+
+        if (!$verification) {
+            return Helpers::error( 'Code incorrect', 400);
         }
-        if (!Auth::attempt(['phone' => $user->phone, 'password' => $request->password])) {
-            return Helpers::error('Invalid credentials');
 
+        if (now()->greaterThan($verification->expires_at)) {
+            return Helpers::error( 'Code expiré', 400);
         }
-        $user->update([
-            'password' => Hash::make($request->new_password)
 
-        ]);
+        $verification->update(['verified' => true]);
 
-        return Helpers::success([
-            'first_name' => $user->name,
-            'phone' => $user->phone,
-            'email' => $user->email,
-            'balance' => 0.0,
-            'date_birth' => date('Y-m-d')
-        ]);
+        return Helpers::success( 'Téléphone vérifié avec succès');
     }
+
+
 }
