@@ -20,7 +20,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable,HasApiTokens;
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'user_type', 'image_url'
+        'name', 'email', 'password', 'phone', 'user_type', 'image_url','fcm_token'
     ];
 
     public function merchant()

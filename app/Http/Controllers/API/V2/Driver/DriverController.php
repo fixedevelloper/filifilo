@@ -82,7 +82,8 @@ class DriverController extends Controller
             'current_latitude'  => $lat,
             'current_longitude' => $lng,
         ]);
-        $this->getLastCourseByDriver($pos->id,$lat,$lng);
+
+        $this->getLastCourseByDriver($driverId,$lat,$lng);
 
         return response()->json(['status' => 'ok']);
     }

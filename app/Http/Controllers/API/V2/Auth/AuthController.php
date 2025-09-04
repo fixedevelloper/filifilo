@@ -119,6 +119,7 @@ class AuthController extends Controller
         if(!$user || !Hash::check($request->password, $user->password)){
             return Helpers::error('Invalid credentials','Invalid credentials');
         }
+        $user->update(['fcm_token'=>$request->fcmId]);
 
        if ($request->has('user_type') && $request->user_type=='driver'){
             $user->driver->update(['device_id' => $request->device_id]);

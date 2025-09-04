@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V2\Customer;
 
 use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
+use App\Helpers\FCMService;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
@@ -129,8 +130,15 @@ class OrderController extends Controller
                 "message" => "Placed a new order",
                 'title' => 'Placed a new order',
             ]);
-                     broadcast(new NewNotification($notification_admin));
+
+            broadcast(new NewNotification($notification_admin));
             broadcast(new NewNotification($notification));
+            //FCMService::send($order->store->merchant->user->fcm_id,'Nouvelle commande','Une nouvelle commande a ete passe');
+           $res= FCMService::sendKer($user->fcm_token,'Nouvelle commande','Une nouvelle commande a ete passe');
+            logger('****************************************************************************');
+            logger($res);
+            logger($user->fcm_token);
+            logger('****************************************************************************');
             DB::commit();
 
             return Helpers::success([

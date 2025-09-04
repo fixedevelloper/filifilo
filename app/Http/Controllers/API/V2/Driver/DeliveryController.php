@@ -27,7 +27,7 @@ class DeliveryController extends Controller
             $query->where('driver_id', $user->driver->id)
                 ->where(function ($q) {
                     $q->where('status', 'assigned')
-                        ->orWhere('status', 'in_delivered');
+                        ->orWhere('status', 'in_delivery');
                 });
         } else {
             $query->where('driver_id', $user->driver->id)

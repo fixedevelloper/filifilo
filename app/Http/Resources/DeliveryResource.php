@@ -16,6 +16,7 @@ class DeliveryResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'reference' => str_pad($this->id, 6, '0', STR_PAD_LEFT) ,
             'order' => [
                 'id'         => $this->order?->id,
             'reference'  => $this->order?->reference,
@@ -29,7 +30,7 @@ class DeliveryResource extends JsonResource
             'shipping_address' => $this->order?->deliveryAddress?->label ?? '',
             'shipping_latitude' => $this->order?->deliveryAddress?->latitude,
             'shipping_longitude' => $this->order?->deliveryAddress?->longitude,
-            'customer_phone'   => $this->order?->customer?->phone ?? '',
+            'customer_phone'   => $this->order?->customer?->user?->phone ?? '',
             'store_name'       => $this->order?->store?->name ?? 'Inconnu',
             'store_latitude'   => $this->order?->store?->latitude,
             'store_longitude'  => $this->order?->store?->longitude,

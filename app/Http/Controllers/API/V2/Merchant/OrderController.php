@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\V2\Merchant;
 
 use App\Events\NewNotification;
 use App\Helpers\api\Helpers;
+use App\Helpers\FCMService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Delivery;
@@ -59,87 +60,87 @@ class OrderController extends Controller
         logger($order);
         return Helpers::success(new OrderResource($order), 'Commande récupérée avec succès');
     }
-    public function accept(Request $request) {
-        $validator=   Validator::make($request->all(),[
+    public function accept(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
             'status' => 'required|string',
             'order_id' => 'required|exists:orders,id',
         ]);
 
         if ($validator->fails()) {
-            $err = null;
-            foreach ($validator->errors()->all() as $error) {
-                $err = $error;
-            }
-            return Helpers::error($err);
+            return Helpers::error($validator->errors()->first());
         }
-        $order=Order::query()->find($request->order_id);
-        $order->update([
-            'status'=>$request->status
-        ]);
-        if ($request->status == Order::IN_DELIVERY) {
 
-            $delivery=Delivery::create([
-               'order_id'=>$order->id,
-            ]);
+        $order = Order::findOrFail($request->order_id);
+        $order->update(['status' => $request->status]);
 
-            $drivers = Driver::query()
-                ->whereDoesntHave('deliveries', function ($query) {
-                    $query->where(['status'=>'assigned']);
-                })
-                ->get();
+        // Notifications for IN_DELIVERY status
+        if ($request->status === Order::IN_DELIVERY) {
+            Delivery::create(['order_id' => $order->id]);
+
+            $drivers = Driver::whereDoesntHave('deliveries', function ($query) {
+                $query->where('status', 'assigned');
+            })->get();
 
             foreach ($drivers as $driver) {
-
-
-                $notification=Notification::create([
-                    'order_id'=>$order->id,
-                    'recipient_id' => $driver->id,
-                    "recipient_type" => 'driver',
-                    "message" => "Commande en preparation au magasin {$order->store->addresse}",
-                    'title'=>'Commande en preparation',
+                Notification::create([
+                    'order_id'       => $order->id,
+                    'recipient_id'   => $driver->id,
+                    'recipient_type' => 'driver',
+                    'title'          => 'Commande en préparation',
+                    'message'        => "Commande en préparation au magasin {$order->store->addresse}",
                 ]);
 
-
-                // Envoi en temps réel
-         /*       broadcast(new NewNotification([
-                    'user_id'       => $driver->id,
-                    'username'      => $driver->first_name, // ✅ cohérent
-                    'profile_image' => $driver->profile_image,
-                    'action_text'   => "Placed a new order",
-                    'time'          => $notification->time_ago, // Accessoire du modèle
-                    'thumbnail_url' => "https://images.unsplash.com/photo-1604908812273-2fdb7354bf9c"
-                ]));*/
+                FCMService::sendKer(
+                    $driver->user->fcm_token,
+                    'Nouvelle course',
+                    "Une nouvelle course a été ajoutée au magasin {$order->store->addresse}"
+                );
             }
-            $notification_admin=Notification::create([
-                'order_id'=>$order->id,
-                'recipient_id' => 1,
-                "recipient_type" => 'admin',
-                "message" => "Commande en preparation",
-                'title'=>'Commande en preparation',
+
+            Notification::create([
+                'order_id'       => $order->id,
+                'recipient_id'   => 1,
+                'recipient_type' => 'admin',
+                'title'          => 'Commande en préparation',
+                'message'        => 'Commande en préparation',
             ]);
         }
-            $notification_admin=Notification::create([
-                'order_id'=>$order->id,
-                'recipient_id' => 1,
-                "recipient_type" => 'admin',
-                "message" => "Commande a changer de status {$order->status}",
-                'title'=>"Commande en {$order->status}",
-            ]);
-        $notification_customer=Notification::create([
-            'order_id'=>$order->id,
-            'recipient_id' => $order->customer_id,
-            "recipient_type" => 'admin',
-            "message" => "Commande a changer de status {$order->status}",
-            'title'=>"Commande en {$order->status}",
+
+        // Notify Admin
+        Notification::create([
+            'order_id'       => $order->id,
+            'recipient_id'   => 1,
+            'recipient_type' => 'admin',
+            'title'          => "Commande en {$order->status}",
+            'message'        => "Commande a changé de statut : {$order->status}",
         ]);
 
-        return Helpers::success(new OrderResource($order), 'Produit créée avec succès');
+        // Notify Customer
+        Notification::create([
+            'order_id'       => $order->id,
+            'recipient_id'   => $order->customer_id,
+            'recipient_type' => 'admin', // Should probably be 'customer'?
+            'title'          => "Commande en {$order->status}",
+            'message'        => "Commande a changé de statut : {$order->status}",
+        ]);
+
+        FCMService::sendKer(
+            $order->customer->user->fcm_token,
+            'Statut de commande',
+            "Votre commande a changé de statut : {$order->status}"
+        );
+
+        return Helpers::success(new OrderResource($order), 'Commande mise à jour avec succès');
     }
+
     public function reject($id) {
         $order=Order::query()->find($id);
         $order->update([
             'status'=>Order::CANCELLED
         ]);
+        FCMService::sendKer($order->customer->user->fcm_token,'Commande Rejete','Votre Commande a ete rejete');
+
         return Helpers::success(new OrderResource($order), 'Produit créée avec succès');
     }
     public function updatePreparationTime(Request $request, $id) {
