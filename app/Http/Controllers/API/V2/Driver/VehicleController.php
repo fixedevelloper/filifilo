@@ -17,13 +17,20 @@ class VehicleController extends Controller
 {
     public function index() {
         $user = Auth::user();
-        $me=$user->driver->vehicle;
+        $me = optional($user->driver)->vehicle;
+
         $vehicules = Vehicle::query()
             ->whereDoesntHave('drivers')
             ->latest()
             ->get();
-        return Helpers::success($vehicules->add($me));
+
+        if ($me) {
+            $vehicules->prepend($me); // ou ->add($me) selon ton besoin
+        }
+
+        return Helpers::success($vehicules);
     }
+
     public function store(Request $request) {
 
         // 1️⃣ Validation des champs
