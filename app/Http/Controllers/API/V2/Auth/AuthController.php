@@ -87,6 +87,7 @@ class AuthController extends Controller
 
                 // ✅ Réponse succès
                 return Helpers::success([
+                    'name'=>$user->name,
                     'user_id'      => $user->id,
                     'access_token' => $token,
                     'token_type'   => 'Bearer',
