@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API\V2\Merchant;
 use App\Helpers\api\Helpers;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
+use App\Models\Drink;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Http\Request;
@@ -86,8 +87,8 @@ class ProductController extends Controller
                 'store_id'    => $store->id,
                 'category_id' => $request->category_id,
                 'ingredients' => $ingredients,  // Store as JSON string
-                'addons'      => $addons,       // Store as JSON string
-                'imageUrl'    => $imageUrl,         // Optional image URL
+                'addons'      => json_decode($request->addons, true),       // Store as JSON string
+                'image_url'    => $imageUrl,         // Optional image URL
             ]);
 
             // Commit the transaction
@@ -128,6 +129,153 @@ class ProductController extends Controller
 
         return Helpers::success($products, 'Produits récupérés avec succès');
     }
-    public function update(Request $request, $id) {}
+    public function update(Request $request, $id) {
+        // Get the currently authenticated user
+
+        // Validate input data
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'price'       => 'required|numeric',
+            'category_id' => 'required|exists:categories,id',
+            'ingredients' => 'required|string', // Expecting a comma-separated string
+            'addons'      => 'required|string', // Expecting a comma-separated string
+            'details'     => 'nullable|string',
+            'delivery'    => 'nullable|string',
+            'pickUp'      => 'nullable|string',
+            'image'       => 'nullable|image|max:2048', // Limit image size to 2MB
+        ]);
+
+        if ($validator->fails()) {
+            return Helpers::error($validator->errors()->first());
+        }
+
+        // Handle image upload if present
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            // Store the image in the 'products' directory
+            $imagePath = $request->file('image')->store('products', 'public');
+            $imageUrl = env('APP_URL') . Storage::url($imagePath); // Full URL
+        }
+
+        // Begin transaction to ensure data consistency
+        DB::beginTransaction();
+
+        try {
+            // Split the comma-separated string into arrays
+            $ingredients = array_map('trim', explode(',', $request->ingredients)); // Split and trim each item
+            $addons = array_map('trim', explode(',', $request->addons)); // Split and trim each item
+
+            // Create the product record
+            $product = Product::findOrFail($id);
+
+            $product->update([
+                'name'        => $request->name,
+                'price'       => $request->price,
+                'description' => $request->details,
+                'category_id' => $request->category_id,
+                'ingredients' => $ingredients, // JSON (array encodé)
+                'addons'      => json_decode($request->addons, true), // JSON (array encodé)
+                'image_url'    => $imageUrl==null?$product->image_url:$imageUrl,
+            ]);
+
+
+            // Commit the transaction
+            DB::commit();
+
+            // Return success response with the created product data
+            return Helpers::success($product, 'Produit créé avec succès');
+        } catch (\Exception $e) {
+            // Rollback transaction in case of error
+            DB::rollBack();
+
+            // Log the error for debugging purposes
+            Log::error('Erreur lors de la création du produit', [
+                'message' => $e->getMessage(),
+                'stack'   => $e->getTraceAsString(),
+            ]);
+
+            // Return a generic error message to the user
+            return Helpers::error('Une erreur est survenue lors de la création du produit');
+        }
+    }
     public function destroy($id) {}
+    public function add_drink(Request $request, $storeID)
+    {
+        // Get the currently authenticated user
+        $cuser = Auth::user();
+        $store = Store::find($storeID);
+
+        // Check if the store exists and if the user is associated with the store
+        if (is_null($store)) {
+            return Helpers::error('Vous n\'êtes pas vendeur de ce magasin');
+        }
+
+        // Validate input data
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'price'       => 'required|numeric',
+            'image'       => 'nullable|image|max:2048', // Limit image size to 2MB
+        ]);
+
+        if ($validator->fails()) {
+            return Helpers::error($validator->errors()->first());
+        }
+
+        // Handle image upload if present
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            // Store the image in the 'products' directory
+            $imagePath = $request->file('image')->store('products', 'public');
+            $imageUrl = env('APP_URL') . Storage::url($imagePath); // Full URL
+        }
+
+        // Begin transaction to ensure data consistency
+        DB::beginTransaction();
+
+        try {
+
+            // Create the product record
+            $product = Drink::create([
+                'name'        => $request->name,
+                'price'       => $request->price,
+                'store_id'    => $store->id,     // Store as JSON string
+                'imageUrl'    => $imageUrl,         // Optional image URL
+            ]);
+
+            // Commit the transaction
+            DB::commit();
+
+            // Return success response with the created product data
+            return Helpers::success($product, 'Produit créé avec succès');
+        } catch (\Exception $e) {
+            // Rollback transaction in case of error
+            DB::rollBack();
+
+            // Log the error for debugging purposes
+            Log::error('Erreur lors de la création du produit', [
+                'message' => $e->getMessage(),
+                'stack'   => $e->getTraceAsString(),
+            ]);
+
+            // Return a generic error message to the user
+            return Helpers::error('Une erreur est survenue lors de la création de la boisson');
+        }
+    }
+    public function drinks($storeID) {
+        $store=Store::query()->find($storeID);
+        if (is_null($store)){
+            return Helpers::error('Vous n etes pas vendeur');
+        }
+
+        $products = Drink::where('store_id', $storeID)->orderBy('name', 'asc')->get()->map(function ($product) {
+            return  [
+                'id'=>$product->id,
+                'name'=>$product->name,
+                'price'=>$product->price,
+                'imageUrl'=>$product->imageUrl,
+            ];
+        });
+
+        return Helpers::success($products, 'Produits récupérés avec succès');
+    }
 }

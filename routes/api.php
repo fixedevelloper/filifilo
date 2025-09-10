@@ -37,12 +37,20 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::post('/driver/location', [DriverController::class, 'updatePosition']);
+
 // ----------------- Admin -----------------
 Route::prefix('admin')->middleware(['auth:sanctum','role:admin'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index']);
+    Route::get('notifications', [DashboardController::class, 'notifications']);
     Route::get('drivers', [AdminController::class, 'drivers']);
     Route::get('orders', [AdminController::class, 'orders']);
+    Route::get('categories', [AdminController::class, 'categories']);
+    Route::get('products', [AdminController::class, 'getProducts']);
+    Route::get('orders/{id}', [CustomerOrderController::class, 'show']);
     Route::get('users', [AdminController::class, 'users']);
+    Route::get('customers', [AdminController::class, 'customers']);
+    Route::get('stores', [AdminController::class, 'stores']);
+    Route::get('drivers/info/{id}', [AdminController::class, 'getInfoDriver']);
 });
 
 // ----------------- Customer -----------------
@@ -55,6 +63,7 @@ Route::prefix('customer')->middleware(['auth:sanctum','role:customer'])->group(f
     Route::get('profile', [CustomerController::class, 'profile']);
     Route::put('profile', [CustomerController::class, 'updateProfile']);
     Route::get('products/{id}/detail', [ProductController::class, 'show']);
+    Route::get('drinks/{id}/index', [ProductController::class, 'drinks']);
     Route::get('loyalty/coupons', [LoyaltyController::class, 'applyCoupon']);
 
     Route::apiResource('addresses', AddressController::class);
@@ -73,9 +82,11 @@ Route::prefix('merchant')->middleware(['auth:sanctum','role:merchant'])->group(f
     Route::put('profile', [MerchantController::class, 'updateProfile']);
     Route::get('default-store', [StoreController::class, 'storeDefaut']);
     Route::apiResource('stores', StoreController::class);
-
     Route::get('products/{id}/index', [ProductController::class, 'index']);
     Route::post('products/{id}', [ProductController::class, 'store']);
+    Route::post('products/{id}/update', [ProductController::class, 'update']);
+    Route::get('drinks/{id}/index', [ProductController::class, 'drinks']);
+    Route::post('drinks/{id}', [ProductController::class, 'add_drink']);
     Route::apiResource('products', ProductController::class);
     Route::get('featured_products/{id}', [ProductController::class, 'featured_products']);
     Route::get('orders/{id}/index', [MerchantOrderController::class, 'index']);
@@ -108,3 +119,4 @@ Route::prefix('common')->middleware('auth:sanctum')->group(function () {
     Route::apiResource('countries', CountryController::class)->only(['index','store']);
     Route::apiResource('cities', CityController::class)->only(['index','store']);
 });
+

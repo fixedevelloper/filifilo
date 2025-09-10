@@ -51,4 +51,24 @@ class Customer extends Model
         return $this->hasMany(Rating::class);
     }
 
+// Total des points disponibles
+    public function availablePoints()
+    {
+        $points = $this->loyaltyPoints()
+            ->get()
+            ->groupBy('type');
+
+        $earned = $points['earned'] ?? collect();
+        $spent = $points['spent'] ?? collect();
+
+        $validEarned = $earned->filter(function($p) {
+            return is_null($p->expiry_date) || $p->expiry_date->gt(now());
+        })->sum('points');
+
+        $spentPoints = $spent->sum('points');
+
+        return $validEarned - $spentPoints;
+    }
+
+
 }

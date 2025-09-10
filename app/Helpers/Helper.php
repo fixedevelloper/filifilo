@@ -127,33 +127,7 @@ class Helper
         $journal->balance_after=$old_balance-$amount;
         $journal->save();
     }
-    public static function create_journal_transfer_cancel($amount,$customer_id,$old_balance){
-        $journal=new Journal();
-        $journal->type_operation=self::OPERATIONTRANSFERT_CANCEL;
-        $journal->amount=$amount;
-        $journal->customer_id=$customer_id;
-        $journal->balance_before=$old_balance;
-        $journal->balance_after=$old_balance+$amount;
-        $journal->save();
-    }
-    public static function create_journal_deposit_cancel($amount,$customer_id,$old_balance){
-        $journal=new Journal();
-        $journal->type_operation=self::OPERATIONDEPOSIT_CANCEL;
-        $journal->amount=$amount;
-        $journal->customer_id=$customer_id;
-        $journal->balance_before=$old_balance;
-        $journal->balance_after=$old_balance;
-        $journal->save();
-    }
-    public static function create_journal_withdraw_cancel($amount,$customer_id,$old_balance){
-        $journal=new Journal();
-        $journal->type_operation=self::OPERATIONWITHDRAW_CANCEL;
-        $journal->amount=$amount;
-        $journal->customer_id=$customer_id;
-        $journal->balance_before=$old_balance;
-        $journal->balance_after=$old_balance+$amount;
-        $journal->save();
-    }
+
     public static function str_slug($text){
         return strtolower(str_ireplace(" ","_",$text)) ;
     }
@@ -190,8 +164,8 @@ class Helper
     public static function generatenumber()
     {
         $tabs=['1','2','3','4','5','6','7','8','9','0'];
-        $strong=date("ymds");
-        for ($i = 1; $i <= 15; $i++) {
+        $strong=date("mds");
+        for ($i = 1; $i <= 5; $i++) {
             $strong .= $tabs[rand(0, count($tabs) - 1)];
         }
         return $strong;

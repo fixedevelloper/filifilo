@@ -6,6 +6,8 @@ namespace App\Http\Controllers\API\V2\Customer;
 use App\Helpers\api\Helpers;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductResource;
+use App\Models\Drink;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Http\Request;
@@ -101,7 +103,7 @@ class CustomerController extends Controller
                     'name' => $product->name,
                     'price' => $product->price,
                     'description' => $product->description,
-                    'image_url' => $product->imageUrl,
+                    'image_url' => $product->image_url,
                     'category_id' => $product->category_id,
                     'store_id' => $product->store_id,
                     'store_name' => $product->store->name ?? null,
@@ -149,17 +151,23 @@ class CustomerController extends Controller
             return Helpers::error('store_id est requis', 400);
         }
 
-        $products = Product::where('store_id', $storeId)->orderBy('name', 'asc')->get()->map(function ($product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->description,
-                'price' => $product->price,
-                'image_url' => $product->imageUrl,
-                'category_id' => $product->category_id,
-                'store_id' => $product->store_id,
-                'store_name' => $product->store->name,
-                'category_name' => $product->category->name,
+        $products = Product::where('store_id', $storeId)->orderBy('name', 'asc')->get();
+
+        return Helpers::success(ProductResource::collection($products), 'Produits récupérés avec succès');
+    }
+    public function drinks(Request $request, $storeId)
+    {
+        $store=Store::query()->find($storeId);
+        if (is_null($store)){
+            return Helpers::error('Vous n etes pas vendeur');
+        }
+
+        $products = Drink::where('store_id', $storeId)->orderBy('name', 'asc')->get()->map(function ($product) {
+            return  [
+                'id'=>$product->id,
+                'name'=>$product->name,
+                'price'=>$product->price,
+                'imageUrl'=>$product->imageUrl,
             ];
         });
 

@@ -10,6 +10,7 @@ use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Coupon;
+use App\Models\LoyaltyPoint;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -55,6 +56,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
+
         $validator = Validator::make($request->all(), [
             'store_id' => 'required|exists:stores,id',
             'delivery_address_id' => 'required|exists:addresses,id',
@@ -64,12 +66,9 @@ class OrderController extends Controller
             'items.*.price' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
         ]);
+
         if ($validator->fails()) {
-            $err = null;
-            foreach ($validator->errors()->all() as $error) {
-                $err = $error;
-            }
-            return Helpers::error($err);
+            return Helpers::error($validator->errors()->first());
         }
 
         Log::info('Début de createOrder', [
@@ -78,17 +77,23 @@ class OrderController extends Controller
         ]);
 
         $items = $request->items;
-        $total = 0.0;
+        $discount = $request->discount ?? 0;
+        $usePoints = (int) $request->input('use_points', 0);
+
+       // $total = array_sum(array_column($items, 'total'));
+        $total = $request->total;
+        $availablePoints = $user->customer->availablePoints();
+        $pointsToUse = min($usePoints, $availablePoints);
+        $discountFromPoints = $pointsToUse * 100; // 1 point = 100 F
 
         DB::beginTransaction();
 
         try {
-            // Pré-calcul du total
-            foreach ($items as $item) {
-                $total += $item['total'];
-            }
+            // Création de la commande
             $order = Order::create([
                 'total_amount' => $total,
+                'discount_amount' => $discount + $discountFromPoints,
+                'final_amount' => max(0, $total - ($discount + $discountFromPoints)),
                 'status' => Order::PENDING,
                 'store_id' => $request->store_id,
                 'customer_id' => $user->customer->id,
@@ -97,48 +102,99 @@ class OrderController extends Controller
                 'instructions' => $request->note,
                 'payment_status' => $request->payment_status,
                 'reference' => 'FF_' . Helper::generatenumber(),
-
             ]);
-            $order->preparation_time = Helper::getDurationOSRM($order->store->latitude, $order->store->longitude, $order->deliveryAddress->latitude, $order->deliveryAddress->longitude)['minutes'];
+
+            $order->preparation_time = Helper::getDurationOSRM(
+                $order->store->latitude,
+                $order->store->longitude,
+                $order->deliveryAddress->latitude,
+                $order->deliveryAddress->longitude
+            )['minutes'];
             $order->save();
+
+            // Création des items
             foreach ($items as $item) {
-                Log::debug('Création de line item', ['item' => $item]);
-                OrderItem::create([
+                $orderItem= OrderItem::create([
                     'addons' => json_encode($item['addons']),
-                    'instructions' => $item['instructions'],
+                    'supplements' => json_encode($item['supplements']),
+                    'instructions' => $item['instructions'] ?? '',
                     'product_virtual' => $item['product_virtual'] ?? false,
                     'product_name' => $item['name'],
                     'quantity' => $item['quantity'],
                     'total_price' => $item['total'],
                     'unit_price' => $item['price'],
-                    'order_id' => $order->id
+                    'order_id' => $order->id,
+                ]);
+                // Attacher les boissons si elles existent
+                if (!empty($item['drinks'])) {
+                    foreach ($item['drinks'] as $drink) {
+                        // Si $drink est un objet Drink ou tableau avec 'id' et 'quantity'
+                        $orderItem->drinks()->attach($drink['id'], [
+                            'quantity' => $drink['quantity'] ?? 1
+                        ]);
+                    }
+                }
+
+            }
+
+            // Application du coupon
+            if ($request->filled('code_promo')) {
+                $coupon = Coupon::where([
+                    'code' => $request->code_promo,
+                    'customer_id' => $user->customer->id,
+                    'status' => 'active'
+                ])->first();
+
+                if ($coupon) {
+                    $order->update(['coupon_id' => $coupon->id]);
+                    $coupon->update(['status' => 'used']);
+                }
+            }
+
+            // Attribution des points
+            $earnedPoints = floor($order->final_amount / 100);
+            if ($earnedPoints > 0) {
+                LoyaltyPoint::create([
+                    'customer_id' => $user->customer->id,
+                    'order_id' => $order->id,
+                    'points' => $earnedPoints,
+                    'type' => 'earned',
+                    'expiry_date' => now()->addMonths(3),
                 ]);
             }
 
+            if ($pointsToUse > 0) {
+                LoyaltyPoint::create([
+                    'customer_id' => $user->customer->id,
+                    'order_id' => $order->id,
+                    'points' => $pointsToUse,
+                    'type' => 'spent',
+                ]);
+            }
 
-            $notification = Notification::create([
-                'order_id' => $order->id,
-                'recipient_id' => $order->store->merchant_id,
-                "recipient_type" => 'merchant',
-                "message" => "Placed a new order",
-                'title' => 'Placed a new order',
-            ]);
-            $notification_admin = Notification::create([
-                'order_id' => $order->id,
-                'recipient_id' => 1,
-                "recipient_type" => 'admin',
-                "message" => "Placed a new order",
-                'title' => 'Placed a new order',
-            ]);
+            // Notifications
+            $notifications = [
+                [
+                    'recipient_id' => $order->store->merchant_id,
+                    'recipient_type' => 'merchant',
+                    'message' => 'Nouvelle commande',
+                    'title' => 'Nouvelle commande',
+                ],
+                [
+                    'recipient_id' => 1,
+                    'recipient_type' => 'admin',
+                    'message' => 'Nouvelle commande',
+                    'title' => 'Nouvelle commande',
+                ]
+            ];
 
-            broadcast(new NewNotification($notification_admin));
-            broadcast(new NewNotification($notification));
-            //FCMService::send($order->store->merchant->user->fcm_id,'Nouvelle commande','Une nouvelle commande a ete passe');
-           $res= FCMService::sendKer($user->fcm_token,'Nouvelle commande','Une nouvelle commande a ete passe');
-            logger('****************************************************************************');
-            logger($res);
-            logger($user->fcm_token);
-            logger('****************************************************************************');
+            foreach ($notifications as $notifData) {
+                $notif = Notification::create(array_merge($notifData, ['order_id' => $order->id]));
+                broadcast(new NewNotification($notif));
+            }
+
+            FCMService::sendKer($user->fcm_token, 'Nouvelle commande', 'Une nouvelle commande a été passée');
+
             DB::commit();
 
             return Helpers::success([
@@ -156,17 +212,17 @@ class OrderController extends Controller
         }
     }
 
+
     public function show($id)
     {
 
         $order = Order::with(['store', 'orderItems', 'customer', 'deliveryAddress', 'latestDelivery'])->find($id);
-
         if (!$order) {
             return Helpers::error('Commande non trouvée');
         }
-
-        logger($order);
-        return Helpers::success(new OrderResource($order), 'Commande récupérée avec succès');
+        $resource=new OrderResource($order);
+        logger(json_encode($resource));
+        return Helpers::success($resource, 'Commande récupérée avec succès');
     }
 
     public function cancel($id)
@@ -174,5 +230,30 @@ class OrderController extends Controller
 
     }
 
+    private function applyCodePromo($code,$orderAmount){
+        $user = Auth::user();
+
+        $coupon = Coupon::where(['code' => $code, 'customer_id' => $user->customer->id])->first();
+
+        if (!$coupon || !$coupon->status == 'active') {
+            return Helpers::error('Coupon invalide', 400);
+        }
+
+
+        if ($orderAmount < $coupon->min_order_amount) {
+            return Helpers::error('Montant minimum non atteint', 400);
+        }
+
+        if (now()->gt($coupon->expiry_date)) {
+            return Helpers::error('Coupon expiré', 400);
+        }
+
+        // Calcul remise
+        $discount = $coupon->discount_type === 'pourcentage'
+            ? min($orderAmount * $coupon->discount_value / 100, $coupon->max_discount ?? INF)
+            : $coupon->discount_value;
+        return $discount;
+
+    }
 
 }

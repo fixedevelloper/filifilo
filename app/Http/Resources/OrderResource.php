@@ -16,7 +16,7 @@ class OrderResource extends JsonResource
             'payment_status'     => $this->payment_status,
             'total_ttc'  => $this->total_amount,
             'total'      => $this->total_amount,
-            'preparation_time'=> $this->preparation_time,
+            'preparation_time'=> $this->preparation_time ?? 0,
             'instructions'=> $this->instructions,
             'customer_name'    => $this->customer->user->name ?? '',
             'shipping_address' => $this->deliveryAddress->label ?? '',
@@ -41,7 +41,16 @@ class OrderResource extends JsonResource
                     'id'       => $line->id,
                     'name'     => $line->product_name,
                     'instructions' => $line->instructions??'',
-                    'addons'     => json_decode($line->addons),
+                    'addons' => $line->addons ? json_decode($line->addons, true) : [],
+                    'supplements' => $line->supplements ? json_decode($line->supplements, true) : [],
+                    'drinks' => $line->drinks->map(function ($drink) {
+                        return [
+                            'id' => $drink->id,
+                            'name' => $drink->name,
+                            'price' => $drink->price,
+                            'quantity' => $drink->pivot->quantity,
+                        ];
+                    }),
                     'ingredients'     => json_decode($line->ingredients),
                     'quantity' => $line->quantity,
                     'price'    => $line->total_price,

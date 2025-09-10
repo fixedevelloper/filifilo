@@ -9,7 +9,7 @@ class OrderItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['order_id','product_name','quantity','unit_price','total_price','product_virtual','addons','instructions'];
+    protected $fillable = ['order_id','product_name','quantity','unit_price','total_price','product_virtual','addons','instructions','supplements'];
 
     public function order()
     {
@@ -19,5 +19,11 @@ class OrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+    public function drinks()
+    {
+        return $this->belongsToMany(Drink::class, 'order_item_drink')
+            ->withPivot('quantity')
+            ->withTimestamps();
     }
 }

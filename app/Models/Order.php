@@ -18,8 +18,15 @@ class Order extends Model
 
     protected $fillable = [
         'customer_id','store_id','status','payment_status','reference','payment_method_id',
-        'total_amount','preparation_time','delivery_address_id','instructions'
+        'total_amount','preparation_time','delivery_address_id','instructions','discount_amount','final_amount','coupon_id'
     ];
+
+    public function getFinalTotalAttribute()
+    {
+        $itemsTotal = $this->orderItems->sum->total_price;
+        return max(0, $itemsTotal - $this->discount_amount);
+    }
+
 
     public function customer()
     {
