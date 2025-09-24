@@ -91,6 +91,7 @@ class DriverController extends Controller
         $deliveries=Delivery::query()->where(['driver_id'=>$driverId,'status'=>'in_delivery'])->latest()->get();
         foreach ($deliveries as $delivery){
 
+            logger('tttttttttttttt'.$delivery->id);
             event(new TransporterPositionUpdated([ 'transporterId'=>$delivery->order_id,
                 'lat'=>$lat,
                 'lng'=>$lng]));
