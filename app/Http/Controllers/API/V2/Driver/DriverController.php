@@ -77,13 +77,16 @@ class DriverController extends Controller
         $device = $request->input('device_id');
         $lat = $request->input('latitude');
         $lng = $request->input('longitude');
-
-        $pos = Driver::where(['device_id'=>$device])->update([
+        logger('------------------------'.$driverId);
+        $driver = tap(
+            Driver::where('device_id', $device)->firstOrFail()
+        )->update([
             'current_latitude'  => $lat,
             'current_longitude' => $lng,
         ]);
-        logger('------------------------'.$driverId);
-        $this->getLastCourseByDriver($driverId,$lat,$lng);
+
+        $this->getLastCourseByDriver($driver->id, $lat, $lng);
+
 
         return response()->json(['status' => 'ok']);
     }
