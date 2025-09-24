@@ -89,6 +89,7 @@ class DriverController extends Controller
     }
     private function getLastCourseByDriver($driverId,$lat,$lng){
         $deliveries=Delivery::query()->where(['driver_id'=>$driverId,'status'=>'in_delivery'])->latest()->get();
+        logger('------------------------'.$deliveries);
         foreach ($deliveries as $delivery){
 
             logger('tttttttttttttt'.$delivery->id);
