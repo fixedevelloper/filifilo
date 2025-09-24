@@ -91,14 +91,32 @@ class DriverController extends Controller
         return response()->json(['status' => 'ok']);
     }
     private function getLastCourseByDriver($driverId,$lat,$lng){
+        logger("Driver ID : {$driverId}");
         $deliveries=Delivery::query()->where(['driver_id'=>$driverId,'status'=>'in_delivery'])->latest()->get();
         logger('------------------------'.$deliveries);
         foreach ($deliveries as $delivery){
 
-            logger('tttttttttttttt'.$delivery->id);
+            logger("Delivery ID : {$delivery->id}");
             event(new TransporterPositionUpdated([ 'transporterId'=>$delivery->order_id,
                 'lat'=>$lat,
                 'lng'=>$lng]));
         }
     }
+    private function getLastOneCourseByDriver($driverId, $lat, $lng)
+    {
+        $delivery = Delivery::where([
+            'driver_id' => $driverId,
+            'status'    => 'in_delivery'
+        ])->latest()->first();
+
+        if ($delivery) {
+            logger("Delivery ID : {$delivery->id}");
+            event(new TransporterPositionUpdated([
+                'transporterId' => $delivery->order_id,
+                'lat'           => $lat,
+                'lng'           => $lng
+            ]));
+        }
+    }
+
 }
