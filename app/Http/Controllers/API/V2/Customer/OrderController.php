@@ -104,16 +104,17 @@ class OrderController extends Controller
                 'reference' => 'FF_' . Helper::generatenumber(),
             ]);
 
-            $order->preparation_time = Helper::getDurationOSRM(
+            $order->delivery_time = Helper::getDurationOSRM(
                 $order->store->latitude,
                 $order->store->longitude,
                 $order->deliveryAddress->latitude,
                 $order->deliveryAddress->longitude
             )['minutes'];
             $order->save();
-
+            $preparingTime=0;
             // Création des items
             foreach ($items as $item) {
+                $preparingTime+=$item['preparing_time'];
                 $orderItem= OrderItem::create([
                     'addons' => json_encode($item['addons']),
                     'supplements' => json_encode($item['supplements']),
@@ -150,7 +151,7 @@ class OrderController extends Controller
                     $coupon->update(['status' => 'used']);
                 }
             }
-
+            $order->update(['preparing_time' => $preparingTime]);
             // Attribution des points
             $earnedPoints = floor($order->final_amount / 100);
             if ($earnedPoints > 0) {

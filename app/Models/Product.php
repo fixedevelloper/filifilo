@@ -12,7 +12,7 @@ class Product extends Model
     protected $fillable = [
         'store_id', 'category_id', 'name', 'description', 'price',
         'stock_quantity','reserved_quantity','stock_alert_level',
-        'status','ingredients','addons','is_deliverable','is_pickup','image_url'
+        'status','ingredients','addons','is_deliverable','is_pickup','image_url','preparing_time'
     ];
 
     protected $casts = [

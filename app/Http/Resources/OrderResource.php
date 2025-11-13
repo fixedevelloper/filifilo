@@ -17,6 +17,7 @@ class OrderResource extends JsonResource
             'total_ttc'  => $this->total_amount,
             'total'      => $this->total_amount,
             'preparation_time'=> $this->preparation_time ?? 0,
+            'delivery_time'=>$this->delivery_time,
             'instructions'=> $this->instructions,
             'customer_name'    => $this->customer->user->name ?? '',
             'shipping_address' => $this->deliveryAddress->label ?? '',

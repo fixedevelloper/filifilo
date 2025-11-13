@@ -18,7 +18,7 @@ class Order extends Model
 
     protected $fillable = [
         'customer_id','store_id','status','payment_status','reference','payment_method_id',
-        'total_amount','preparation_time','delivery_address_id','instructions','discount_amount','final_amount','coupon_id'
+        'total_amount','preparation_time','delivery_address_id','instructions','discount_amount','final_amount','coupon_id','delivery_time'
     ];
 
     public function getFinalTotalAttribute()

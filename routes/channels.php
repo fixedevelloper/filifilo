@@ -10,9 +10,9 @@ Broadcast::channel('tracking.{orderId}', function ($user, $orderId) {
 });
 
 
-/*Broadcast::channel('transporter.*', function () {
+Broadcast::channel('transporter.*', function () {
     return true;
-});*/
+});
 
 Broadcast::channel('notifications.{userId}', function ($user, $userId) {
     logger('****************' . $userId);

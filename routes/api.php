@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\V2\Customer\RideController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\V2\Admin\AdminController;
 use App\Http\Controllers\API\V2\Admin\DashboardController;
@@ -65,7 +66,10 @@ Route::prefix('customer')->middleware(['auth:sanctum','role:customer'])->group(f
     Route::get('products/{id}/detail', [ProductController::class, 'show']);
     Route::get('drinks/{id}/index', [ProductController::class, 'drinks']);
     Route::get('loyalty/coupons', [LoyaltyController::class, 'applyCoupon']);
-
+    Route::get('drivers/nearby', [DriverController::class, 'registerClientPickup']);
+    Route::get('price_ride', [RideController::class, 'calculerTarif']);
+    Route::post('rides', [RideController::class, 'store']);
+    Route::get('rides/{id}', [RideController::class, 'getRide']);
     Route::apiResource('addresses', AddressController::class);
     Route::apiResource('payment-methods', PaymentMethodController::class);
     Route::apiResource('orders', CustomerOrderController::class);

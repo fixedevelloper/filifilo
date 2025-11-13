@@ -82,6 +82,9 @@ class DeliveryController extends Controller
 
     /**
      * Trouver la livraison en fonction de l'utilisateur et de l'ID de la livraison.
+     * @param $id
+     * @param $user
+     * @return
      */
     private function findDeliveryForUser($id, $user)
     {
@@ -96,6 +99,9 @@ class DeliveryController extends Controller
 
     /**
      * Traiter le changement de statut.
+     * @param Delivery $delivery
+     * @param $status
+     * @param $user
      */
     private function handleStatusChange(Delivery $delivery, $status, $user)
     {
@@ -116,6 +122,8 @@ class DeliveryController extends Controller
 
     /**
      * Mettre à jour le statut de la livraison.
+     * @param Delivery $delivery
+     * @param $status
      */
     private function updateDeliveryStatus(Delivery $delivery, $status)
     {
@@ -128,6 +136,8 @@ class DeliveryController extends Controller
 
     /**
      * Assigner la livraison à un chauffeur.
+     * @param Delivery $delivery
+     * @param $user
      */
     private function assignDelivery(Delivery $delivery, $user)
     {
@@ -142,12 +152,15 @@ class DeliveryController extends Controller
 
     /**
      * Envoyer les notifications au marchand, au client et à l\'admin.
+     * @param Delivery $delivery
+     * @param $message
+     * @param $title
      */
     private function sendNotification(Delivery $delivery, $message, $title)
     {
         $merchantNotification = $this->createNotification($delivery, $delivery->order->store->merchant_id, 'merchant', $message, $title);
         $customerNotification = $this->createNotification($delivery, $delivery->order->customer->id, 'customer', $message, $title);
-        $adminNotification = $this->createNotification($delivery, 1, 'merchant', $message, $title);
+        $adminNotification = $this->createNotification($delivery, 1, 'admin', $message, $title);
 
         // Diffusion des notifications
         broadcast(new NewNotification($merchantNotification));
@@ -157,6 +170,12 @@ class DeliveryController extends Controller
 
     /**
      * Créer une nouvelle notification.
+     * @param Delivery $delivery
+     * @param $recipientId
+     * @param $recipientType
+     * @param $message
+     * @param $title
+     * @return
      */
     private function createNotification(Delivery $delivery, $recipientId, $recipientType, $message, $title)
     {

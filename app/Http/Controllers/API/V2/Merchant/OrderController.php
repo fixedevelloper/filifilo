@@ -44,7 +44,7 @@ class OrderController extends Controller
                 'total' => $order->total_amount,
                 'items'=>$lines,
                 'store_name' => $order->store->name,
-                'date' => $order->created_at->toDateTimeString(),
+                'date' => $order->created_at->toDateString(),
             ];
         });
 

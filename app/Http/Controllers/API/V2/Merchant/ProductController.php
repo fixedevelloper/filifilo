@@ -84,6 +84,7 @@ class ProductController extends Controller
                 'name'        => $request->name,
                 'price'       => $request->price,
                 'description'     => $request->details,
+                'preparing_time'     => $request->preparing_time,
                 'store_id'    => $store->id,
                 'category_id' => $request->category_id,
                 'ingredients' => $ingredients,  // Store as JSON string
